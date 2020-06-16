@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/plugins/curved_split_merge" >
+        <file>icon.png</file>
+        <file>icons/CurvedActionMergeFeatures.svg</file>
+        <file>icons/CurvedActionSplitFeatures.svg</file>
+    </qresource>
+</RCC>
