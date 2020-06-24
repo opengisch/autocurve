@@ -17,7 +17,7 @@ on:
             python-version: 3.7
 
         - name: Install qgis-plugin-ci
-          run: pip install qgis-plugin-ci==1.5.4
+          run: pip install qgis-plugin-ci==1.7.0
 
         - name: Deploy to QGIS plugin repository
           env:
