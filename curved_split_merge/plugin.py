@@ -91,8 +91,10 @@ class Plugin:
 
         for layer in self.watched_layers:
             if not sip.isdeleted(layer):
-                layer.geometryChanged.disconnect(self.curvify)
-                layer.featureAdded.disconnect(self.curvify)
+                layer.geometryChanged.disconnect(self.add_to_changelog)
+                layer.featureAdded.disconnect(self.add_to_changelog)
+                layer.editCommandStarted.connect(self.reset_changelog)
+                layer.editCommandEnded.connect(self.curvify)
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
@@ -100,12 +102,19 @@ class Plugin:
     def watch_layer(self, layer):
         # We watch geometryChanged and featureAdded on all layers
         if layer and layer.type() == QgsMapLayerType.VectorLayer and layer not in self.watched_layers:
-            layer.geometryChanged.connect(self.curvify)
-            layer.featureAdded.connect(self.curvify)
+            layer.geometryChanged.connect(self.add_to_changelog)
+            layer.featureAdded.connect(self.add_to_changelog)
+            layer.editCommandStarted.connect(self.reset_changelog)
+            layer.editCommandEnded.connect(self.curvify)
             self.watched_layers.append(layer)
 
+    def reset_changelog(self):
+        self.changed_fids = []
 
-    def curvify(self, fid, geometry=None):
+    def add_to_changelog(self, fid, geometry=None):
+        self.changed_fids.append(fid)
+
+    def curvify(self):
 
         if not self.auto_curve_enabled:
             return
@@ -114,16 +123,10 @@ class Plugin:
             # Avoiding recursion as the algorithm will also trigger geometryChanged
             return
 
-        QgsMessageLog.logMessage(f"Curvifying feature {fid}", "Curved Split/Merge")
-
         alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
         layer = self.iface.activeLayer()
-        layer.selectByIds([fid])
+        layer.selectByIds(self.changed_fids)
         self._prevent_recursion = True
-        # TODO :execute_in_place doesn't work well from here, as we are in midst of an editCommand,
-        # so that it doesn't properly register the new edit command, leading to a crash on undo or
-        # revert changes...
-        # Works well from the python console though.
         AlgorithmExecutor.execute_in_place(alg, {})
         self._prevent_recursion = False
         layer.removeSelection()
