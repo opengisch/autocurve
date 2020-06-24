@@ -69,81 +69,61 @@ class Plugin:
 
         self.toolbar = self.iface.addToolBar(self.tr(u"Curved Split and Merge"))
 
-        self.split_action = QAction(
-            QIcon(':/plugins/curved_split_merge/icons/CurvedActionSplitFeatures.svg'),
-            self.tr(u'Split and curvify'),
-            self.toolbar,
-        )
-        self.split_action.triggered.connect(self.split)
-        self.toolbar.addAction(self.split_action)
-
-        self.merge_action = QAction(
-            QIcon(':/plugins/curved_split_merge/icons/CurvedActionMergeFeatures.svg'),
+        self.auto_curve_action = QAction(
+            QIcon(':/plugins/curved_split_merge/icon.svg'),
             self.tr(u'Merge and curvify'),
             self.toolbar,
         )
-        self.merge_action.triggered.connect(self.merge)
-        self.toolbar.addAction(self.merge_action)
+        self.auto_curve_action.setCheckable(True)
+        self.auto_curve_action.toggled.connect(self.toggle_auto_curve)
+        self.toolbar.addAction(self.auto_curve_action)
 
         self.watched_layers = []
-        self.curvify_enabled = False
-        self.previous_maptool = None
+        self._prevent_recursion = False
 
         self.watch_layer(self.iface.activeLayer())
         self.iface.currentLayerChanged.connect(self.watch_layer)
-        self.refresh_enabled()
+
+        self.toggle_auto_curve(False)
 
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
 
         for layer in self.watched_layers:
             if not sip.isdeleted(layer):
-                layer.editCommandEnded.disconnect(self.curvify)
-                layer.editingStarted.disconnect(self.refresh_enabled)
-                layer.editingStopped.disconnect(self.refresh_enabled)
+                layer.geometryChanged.disconnect(self.curvify)
+                layer.featureAdded.disconnect(self.curvify)
 
+    def toggle_auto_curve(self, checked):
+        self.auto_curve_enabled = checked
 
     def watch_layer(self, layer):
-        # We watch editCommandEnded on all layers
+        # We watch geometryChanged and featureAdded on all layers
         if layer and layer.type() == QgsMapLayerType.VectorLayer and layer not in self.watched_layers:
-            layer.editCommandEnded.connect(self.curvify)
-            layer.editingStarted.connect(self.refresh_enabled)
-            layer.editingStopped.connect(self.refresh_enabled)
+            layer.geometryChanged.connect(self.curvify)
+            layer.featureAdded.connect(self.curvify)
             self.watched_layers.append(layer)
 
-    def refresh_enabled(self):
-        layer = self.iface.activeLayer()
-        enabled = layer and layer.isEditable()
-        self.split_action.setEnabled(bool(enabled))
-        self.merge_action.setEnabled(bool(enabled))
 
-    def split(self):
-        self.curvify_enabled = True
-        self.previous_maptool = self.iface.mapCanvas().mapTool()
-        action = self.iface.actionSplitFeatures()
-        action.trigger()
+    def curvify(self, fid, geometry=None):
 
-    def merge(self):
-        self.curvify_enabled = True
-        self.previous_maptool = None
-        # action = self.iface.actionMergeFeatures()  # this is missing in the API :-/
-        action = next(a for a in self.iface.advancedDigitizeToolBar().actions() if a.objectName()=='mActionMergeFeatures')
-        action.trigger()
-
-
-    def curvify(self):
-
-        if not self.curvify_enabled:
-            # Avoiding recursion as the algorithm will also trigger editCommandEnded
+        if not self.auto_curve_enabled:
             return
-        self.curvify_enabled = False
+
+        if self._prevent_recursion:
+            # Avoiding recursion as the algorithm will also trigger geometryChanged
+            return
+
+        QgsMessageLog.logMessage(f"Curvifying feature {fid}", "Curved Split/Merge")
 
         alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
         layer = self.iface.activeLayer()
+        layer.selectByIds([fid])
+        self._prevent_recursion = True
+        # TODO :execute_in_place doesn't work well from here, as we are in midst of an editCommand,
+        # so that it doesn't properly register the new edit command, leading to a crash on undo or
+        # revert changes...
+        # Works well from the python console though.
+        AlgorithmExecutor.execute_in_place(alg, {})
+        self._prevent_recursion = False
         layer.removeSelection()
-        AlgorithmExecutor.execute_in_place(alg, {'INPUT': layer})
-        layer.removeSelection()
-
-        if self.previous_maptool:
-            self.iface.mapCanvas().setMapTool( self.previous_maptool )
-            self.previous_maptool = None
