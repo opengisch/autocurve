@@ -37,7 +37,7 @@ from .resources import *
 import os.path
 
 
-class CurvedSplitAndMerge:
+class Plugin:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -108,7 +108,7 @@ class CurvedSplitAndMerge:
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         self.toolbar = self.iface.addToolBar(self.tr(u"Curved Split and Merge"))
-        
+
         self.add_action(
             ':/plugins/curved_split_merge/icons/CurvedActionSplitFeatures.svg',
             text=self.tr(u'Split and curvify'),
@@ -172,21 +172,21 @@ class CurvedSplitAndMerge:
         action = next(actions, None)
         action.trigger()
 
-        
+
     def curvify(self):
-        
+
         if not self.curvify_enabled:
             # Avoiding recursion as the algorithm will also trigger editCommandEnded
             return
-        
+
         self.curvify_enabled = False
-        
+
         alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
         layer = self.iface.activeLayer()
         layer.removeSelection()
         AlgorithmExecutor.execute_in_place(alg, {'INPUT': layer})
         layer.removeSelection()
-        
+
         if self.previous_maptool:
             self.iface.mapCanvas().setMapTool( self.previous_maptool )
             self.previous_maptool = None

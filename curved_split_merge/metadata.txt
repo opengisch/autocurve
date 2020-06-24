@@ -4,9 +4,9 @@
 
 [general]
 name=Curved Split and Merge
-qgisMinimumVersion=3.13
+qgisMinimumVersion=3.14
 description=Helper to run split and merge on curved geometries
-version=0.1
+version=dev
 author=Opengis
 email=olivier@opengis.ch
 
