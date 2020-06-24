@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/curved_split_merge" >
+    <qresource prefix="/plugins/autocurve" >
         <file>icon.svg</file>
     </qresource>
 </RCC>

@@ -1,0 +1,27 @@
+[general]
+name=Autocurve
+qgisMinimumVersion=3.14
+description=Automatically converts geometries to curves after edit commands
+version=dev
+author=Opengis
+email=olivier@opengis.ch
+
+about=Adds a toggle that automatically runs the convert to curve algorithm after edit commands such as split or merge.
+
+tracker=https://github.com/opengisch/curved_split_merge/issues
+repository=https://github.com/opengisch/curved_split_merge
+
+# Recommended items:
+
+hasProcessingProvider=no
+# changelog=
+tags=python, vector, curves
+homepage=https://github.com/opengisch/curved_split_merge
+category=Vector
+icon=icon.svg
+experimental=True
+deprecated=False
+
+# If the plugin can run on QGIS Server.
+server=False
+
