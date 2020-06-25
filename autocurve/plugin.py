@@ -31,8 +31,6 @@ from processing.gui import AlgorithmExecutor
 
 import sip
 
-# Initialize Qt resources from file resources.py
-from .resources_rc import *
 import os.path
 
 
@@ -69,7 +67,7 @@ class Plugin:
         self.toolbar = self.iface.addToolBar(self.tr(u"Autocurve"))
 
         self.auto_curve_action = QAction(
-            QIcon(':/plugins/autocurve/icon.svg'),
+            QIcon(os.path.join(self.plugin_dir, 'icon.svg')),
             self.tr(u'Merge and curvify'),
             self.toolbar,
         )

@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/autocurve" >
-        <file>icon.svg</file>
-    </qresource>
-</RCC>
