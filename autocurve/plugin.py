@@ -38,37 +38,17 @@ class Plugin:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
-        # Save reference to the QGIS interface
         self.iface = iface
-        # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
-        # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'AutoCurve_{}.qm'.format(locale))
-
-        if os.path.exists(locale_path):
-            self.translator = QTranslator()
-            self.translator.load(locale_path)
-            QCoreApplication.installTranslator(self.translator)
-
-
-    # noinspection PyMethodMayBeStatic
-    def tr(self, message):
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('AutoCurve', message)
-
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        self.toolbar = self.iface.addToolBar(self.tr(u"Autocurve"))
+        self.toolbar = self.iface.addToolBar("Autocurve")
 
         self.auto_curve_action = QAction(
             QIcon(os.path.join(self.plugin_dir, 'icon.svg')),
-            self.tr(u'Merge and curvify'),
+            'Autocurve',
             self.toolbar,
         )
         self.auto_curve_action.setCheckable(True)
