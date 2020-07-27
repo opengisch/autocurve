@@ -24,7 +24,7 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QToolBar
 
-from qgis.core import QgsMessageLog, QgsApplication, QgsMapLayerType
+from qgis.core import QgsMessageLog, QgsApplication, QgsMapLayerType, QgsSettings
 from qgis.gui import QgsMapToolPan
 
 from processing.gui import AlgorithmExecutor
@@ -100,10 +100,16 @@ class Plugin:
             # Avoiding recursion as the algorithm will also trigger geometryChanged
             return
 
+        # Get custom convert to curve tolerance settings
+        params = {
+            "DISTANCE": QgsSettings().value("/qgis/digitizing/convert_to_curve_distance_tolerance", 1e-6),
+            "ANGLE": QgsSettings().value("/qgis/digitizing/convert_to_curve_angle_tolerance", 1e-6),
+        }
+
         alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
         layer = self.iface.activeLayer()
         layer.selectByIds(self.changed_fids)
         self._prevent_recursion = True
-        AlgorithmExecutor.execute_in_place(alg, {})
+        AlgorithmExecutor.execute_in_place(alg, params)
         self._prevent_recursion = False
         layer.removeSelection()
