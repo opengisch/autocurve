@@ -14,7 +14,8 @@ repository=https://github.com/opengisch/curved_split_merge
 # Recommended items:
 
 hasProcessingProvider=no
-# changelog=
+changelog=Version 0.3 (06/10/2020)
+  - FEATURE : restore enabled state on load
 tags=python, vector, curves
 homepage=https://github.com/opengisch/curved_split_merge
 category=Vector

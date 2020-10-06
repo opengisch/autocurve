@@ -61,7 +61,8 @@ class Plugin:
         self.watch_layer(self.iface.activeLayer())
         self.iface.currentLayerChanged.connect(self.watch_layer)
 
-        self.toggle_auto_curve(False)
+        enabled = QgsSettings().value("autocurve/enabled", None) == 'true'
+        self.auto_curve_action.setChecked(enabled)
 
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
@@ -75,6 +76,7 @@ class Plugin:
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
+        QgsSettings().setValue("autocurve/enabled", str(self.auto_curve_enabled).lower())
 
     def watch_layer(self, layer):
         # We watch geometryChanged and featureAdded on all layers
