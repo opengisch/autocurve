@@ -40,6 +40,7 @@ class Plugin:
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
+        self.auto_curve_enabled = False
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
