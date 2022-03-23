@@ -56,7 +56,7 @@ class Plugin:
         self.auto_curve_action.toggled.connect(self.toggle_auto_curve)
         self.toolbar.addAction(self.auto_curve_action)
 
-        self.watched_layers = []
+        self.watched_layers = set()
         self._prevent_recursion = False
 
         self.watch_layer(self.iface.activeLayer())
@@ -74,6 +74,7 @@ class Plugin:
                 layer.featureAdded.disconnect(self.add_to_changelog)
                 layer.editCommandStarted.connect(self.reset_changelog)
                 layer.editCommandEnded.connect(self.curvify)
+        self.watched_layers = set()
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
@@ -86,13 +87,13 @@ class Plugin:
             layer.featureAdded.connect(self.add_to_changelog)
             layer.editCommandStarted.connect(self.reset_changelog)
             layer.editCommandEnded.connect(self.curvify)
-            self.watched_layers.append(layer)
+            self.watched_layers.add(layer)
 
     def reset_changelog(self):
-        self.changed_fids = []
+        self.changed_fids = set()
 
     def add_to_changelog(self, fid, geometry=None):
-        self.changed_fids.append(fid)
+        self.changed_fids.add(fid)
 
     def curvify(self):
 
@@ -111,7 +112,7 @@ class Plugin:
 
         alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
         layer = self.iface.activeLayer()
-        layer.selectByIds(self.changed_fids)
+        layer.selectByIds(list(self.changed_fids))
         self._prevent_recursion = True
         AlgorithmExecutor.execute_in_place(alg, params)
         self._prevent_recursion = False
