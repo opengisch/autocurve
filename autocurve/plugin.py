@@ -100,6 +100,10 @@ class Plugin:
         if not self.auto_curve_enabled:
             return
 
+        if not self.changed_fids:
+            # No geometries have changed, no need to run
+            return
+
         if self._prevent_recursion:
             # Avoiding recursion as the algorithm will also trigger geometryChanged
             return
