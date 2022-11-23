@@ -19,7 +19,7 @@ changelog=Version 0.3 (06/10/2020)
 tags=python, vector, curves
 homepage=https://github.com/opengisch/curved_split_merge
 category=Vector
-icon=icon.svg
+icon=icons/autocurve.svg
 experimental=True
 deprecated=False
 
