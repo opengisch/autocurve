@@ -14,10 +14,7 @@ repository=https://github.com/opengisch/curved_split_merge
 # Recommended items:
 
 hasProcessingProvider=no
-changelog=Version 0.6 (23/11/2022)
-  - FEATURE : add harmonize arcs feature
-Version 0.3 (06/10/2020)
-  - FEATURE : restore enabled state on load
+changelog=https://github.com/opengisch/autocurve/releases
 tags=python, vector, curves
 homepage=https://github.com/opengisch/curved_split_merge
 category=Vector
