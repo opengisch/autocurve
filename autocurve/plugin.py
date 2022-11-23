@@ -37,7 +37,6 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 from . import settings
-from .log import debug, log
 
 
 class Plugin:
@@ -164,18 +163,13 @@ class Plugin:
 
         layer.beginEditCommand("Harmonize arcs")
 
-        debug(f"==== HARMONIZING ARCS ====")
-
         for feature in layer.selectedFeatures():
-
-            debug(f"Arc snapping ft. {feature.id()}...")
 
             # Find all arcs points
             arcs_vertices = self._get_curve_points(feature.geometry())
 
             # Skip if not curved
             if not arcs_vertices:
-                debug(f"-- no arc vertices segments, skipping")
                 continue
 
             # Find all neighbours to test against
@@ -183,57 +177,40 @@ class Plugin:
             request.setDistanceWithin(feature.geometry(), settings.distance())
             neighbours = layer.getFeatures(request)
 
-            # Iterate and check for snapping
+            # Iterate on all arc vertics, combinined will all neighbouring arc vertices
             for arc_vertex in arcs_vertices:
-                debug(f"-- Doing arc vertex {arc_vertex}")
 
                 for neighbour in neighbours:
+
                     if neighbour.id() == feature.id():
+                        # don't compare about itself
                         continue
 
                     for nearby_arc_vertex in self._get_curve_points(
                         neighbour.geometry()
                     ):
-
-                        debug(
-                            f"---- testing against ft. {neighbour.id()} vtx. {nearby_arc_vertex}"
-                        )
-
+                        # Perform the actual snapping test
                         if self._can_snap(
                             feature, arc_vertex, neighbour, nearby_arc_vertex
                         ):
+                            # Perform the actual snapping
                             other_vertex = neighbour.geometry().vertexAt(
                                 nearby_arc_vertex
                             )
                             new_geom = QgsGeometry(feature.geometry())
                             success = new_geom.moveVertex(other_vertex, arc_vertex)
-                            if not success:
-                                log(f"Error while snaping at {other_vertex}")
+                            assert success
                             layer.changeGeometry(feature.id(), new_geom)
-                            debug(
-                                f"------ pt. {nearby_arc_vertex}: SNAPPED TO {other_vertex.asWkt()}"
-                            )
-                        else:
-                            debug(f"------ pt. {nearby_arc_vertex}: NO SNAP")
         layer.endEditCommand()
 
     def _can_snap(self, feature_1, arc_vertex_1, feature_2, arc_vertex_2):
-        """Returns whether both given vertices can snap."""
-        # For now, we only snap if the start and end point are equal
+        """Returns whether both given arc vertices can snap."""
 
-        debug(
-            f"------ CHECKING [ft. {feature_1.id()} vtx. {arc_vertex_1}] vs [ft. {feature_2.id()} vtx. {arc_vertex_2}]"
-        )
-
-        v_1a, v_1c = feature_1.geometry().adjacentVertices(arc_vertex_1)
-        v_2a, v_2c = feature_2.geometry().adjacentVertices(arc_vertex_2)
-
-        v_1a = arc_vertex_1 - 1
+        # Get the 3 points that form both arcs
         v_1b = arc_vertex_1
-        v_1c = arc_vertex_1 + 1
-        v_2a = arc_vertex_2 - 1
         v_2b = arc_vertex_2
-        v_2c = arc_vertex_2 + 1
+        v_1a, v_1c = feature_1.geometry().adjacentVertices(v_1b)
+        v_2a, v_2c = feature_2.geometry().adjacentVertices(v_2b)
 
         p1a = feature_1.geometry().vertexAt(v_1a)
         p1b = feature_1.geometry().vertexAt(v_1b)
@@ -243,31 +220,22 @@ class Plugin:
         p2b = feature_2.geometry().vertexAt(v_2b)
         p2c = feature_2.geometry().vertexAt(v_2c)
 
-        debug(
-            f"------ COMPARING ARC [{p1a.asWkt()} {p1b.asWkt()} {p1c.asWkt()}] vs [{p2a.asWkt()} {p2b.asWkt()} {p2c.asWkt()}]"
-        )
-
         # Test if start and end points are equal
         if not (self._almost_equal(p1a, p2a) and self._almost_equal(p1c, p2c)) and not (
             self._almost_equal(p1a, p2c) and self._almost_equal(p1c, p2a)
         ):
-            debug(
-                f"------ NO SNAP due to start/end point mismatch [{p1a.asWkt()} {p1c.asWkt()}] vs [{p2a.asWkt()} {p2c.asWkt()}]"
-            )
             return False
 
         # Test if circles are equivalent (same center point within tolerance)
         _, c1x, c1y = QgsGeometryUtils.circleCenterRadius(p1a, p1b, p1c)
         _, c2x, c2y = QgsGeometryUtils.circleCenterRadius(p2a, p2b, p2c)
         if not self._almost_equal(QgsPoint(c1x, c1y), QgsPoint(c2x, c2y)):
-            debug(
-                f"------ NO SNAP due to center point distance above tolerance {QgsPoint(c1x, c1y).distance(QgsPoint(c2x, c2y))} [{c1x};{c1y}] vs [{c2x};{c2y}]"
-            )
             return False
 
         return True
 
     def _almost_equal(self, p1, p2):
+        """Test point equality with tolerance"""
         return p1.distance(p2) <= settings.distance()
 
     def _get_curve_points(self, geometry):
