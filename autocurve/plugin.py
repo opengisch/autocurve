@@ -24,9 +24,18 @@ import os.path
 
 import sip
 from processing.gui import AlgorithmExecutor
-from qgis.core import QgsApplication, QgsMapLayerType, QgsSettings
+from qgis.core import (
+    QgsApplication,
+    QgsMapLayerType,
+    QgsProcessingProvider,
+    QgsSettings,
+)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+
+from .processing import HarmonizeArcCenters
+
+ICON = QIcon(os.path.join(os.path.dirname(__file__), "icon.svg"))
 
 
 class Plugin:
@@ -34,7 +43,6 @@ class Plugin:
 
     def __init__(self, iface):
         self.iface = iface
-        self.plugin_dir = os.path.dirname(__file__)
         self.auto_curve_enabled = False
 
     def initGui(self):
@@ -42,11 +50,7 @@ class Plugin:
 
         self.toolbar = self.iface.addToolBar("Autocurve")
 
-        self.auto_curve_action = QAction(
-            QIcon(os.path.join(self.plugin_dir, "icon.svg")),
-            "Autocurve",
-            self.toolbar,
-        )
+        self.auto_curve_action = QAction(ICON, "Autocurve", self.toolbar)
         self.auto_curve_action.setCheckable(True)
         self.auto_curve_action.toggled.connect(self.toggle_auto_curve)
         self.toolbar.addAction(self.auto_curve_action)
@@ -60,6 +64,9 @@ class Plugin:
         enabled = QgsSettings().value("autocurve/enabled", None) == "true"
         self.auto_curve_action.setChecked(enabled)
 
+        self.processing_provider = ProcessingProvider()
+        QgsApplication.processingRegistry().addProvider(self.processing_provider)
+
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
 
@@ -70,6 +77,8 @@ class Plugin:
                 layer.editCommandStarted.connect(self.reset_changelog)
                 layer.editCommandEnded.connect(self.curvify)
         self.watched_layers = set()
+
+        QgsApplication.processingRegistry().removeProvider(self.processing_provider)
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
@@ -119,12 +128,35 @@ class Plugin:
             ),
         }
 
+        # Avoid recursion as the following code will trigger geometryChanged
+        self._prevent_recursion = True
+
+        # Select affected polygons
+        layer = self.iface.activeLayer()
+        layer.selectByIds(list(self.changed_fids))
+
+        # Run converttocurves in-place
         alg = QgsApplication.processingRegistry().createAlgorithmById(
             "native:converttocurves"
         )
-        layer = self.iface.activeLayer()
-        layer.selectByIds(list(self.changed_fids))
-        self._prevent_recursion = True
         AlgorithmExecutor.execute_in_place(alg, params)
-        self._prevent_recursion = False
+
+        # Remove selection
         layer.removeSelection()
+
+        # Disable recursion prevention
+        self._prevent_recursion = False
+
+
+class ProcessingProvider(QgsProcessingProvider):
+    def id(self):
+        return "autocurve"
+
+    def name(self):
+        return "autocurve"
+
+    def icon(self):
+        return ICON
+
+    def loadAlgorithms(self):
+        self.addAlgorithm(HarmonizeArcCenters())
