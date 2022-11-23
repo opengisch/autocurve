@@ -24,16 +24,9 @@ import os.path
 
 import sip
 from processing.gui import AlgorithmExecutor
-from qgis.core import (
-    QgsApplication,
-    QgsMapLayerType,
-    QgsProcessingProvider,
-    QgsSettings,
-)
+from qgis.core import QgsApplication, QgsMapLayerType, QgsSettings
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
-
-from .processing import HarmonizeArcCenters
 
 ICON = QIcon(os.path.join(os.path.dirname(__file__), "icon.svg"))
 
@@ -64,9 +57,6 @@ class Plugin:
         enabled = QgsSettings().value("autocurve/enabled", None) == "true"
         self.auto_curve_action.setChecked(enabled)
 
-        self.processing_provider = ProcessingProvider()
-        QgsApplication.processingRegistry().addProvider(self.processing_provider)
-
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
 
@@ -77,8 +67,6 @@ class Plugin:
                 layer.editCommandStarted.connect(self.reset_changelog)
                 layer.editCommandEnded.connect(self.curvify)
         self.watched_layers = set()
-
-        QgsApplication.processingRegistry().removeProvider(self.processing_provider)
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
@@ -146,17 +134,3 @@ class Plugin:
 
         # Disable recursion prevention
         self._prevent_recursion = False
-
-
-class ProcessingProvider(QgsProcessingProvider):
-    def id(self):
-        return "autocurve"
-
-    def name(self):
-        return "autocurve"
-
-    def icon(self):
-        return ICON
-
-    def loadAlgorithms(self):
-        self.addAlgorithm(HarmonizeArcCenters())
