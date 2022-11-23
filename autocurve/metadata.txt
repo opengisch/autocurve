@@ -25,4 +25,3 @@ deprecated=False
 
 # If the plugin can run on QGIS Server.
 server=False
-

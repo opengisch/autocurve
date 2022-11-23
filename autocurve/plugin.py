@@ -20,18 +20,13 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QToolBar
-
-from qgis.core import QgsMessageLog, QgsApplication, QgsMapLayerType, QgsSettings
-from qgis.gui import QgsMapToolPan
-
-from processing.gui import AlgorithmExecutor
+import os.path
 
 import sip
-
-import os.path
+from processing.gui import AlgorithmExecutor
+from qgis.core import QgsApplication, QgsMapLayerType, QgsSettings
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction
 
 
 class Plugin:
@@ -48,8 +43,8 @@ class Plugin:
         self.toolbar = self.iface.addToolBar("Autocurve")
 
         self.auto_curve_action = QAction(
-            QIcon(os.path.join(self.plugin_dir, 'icon.svg')),
-            'Autocurve',
+            QIcon(os.path.join(self.plugin_dir, "icon.svg")),
+            "Autocurve",
             self.toolbar,
         )
         self.auto_curve_action.setCheckable(True)
@@ -62,7 +57,7 @@ class Plugin:
         self.watch_layer(self.iface.activeLayer())
         self.iface.currentLayerChanged.connect(self.watch_layer)
 
-        enabled = QgsSettings().value("autocurve/enabled", None) == 'true'
+        enabled = QgsSettings().value("autocurve/enabled", None) == "true"
         self.auto_curve_action.setChecked(enabled)
 
     def unload(self):
@@ -78,11 +73,17 @@ class Plugin:
 
     def toggle_auto_curve(self, checked):
         self.auto_curve_enabled = checked
-        QgsSettings().setValue("autocurve/enabled", str(self.auto_curve_enabled).lower())
+        QgsSettings().setValue(
+            "autocurve/enabled", str(self.auto_curve_enabled).lower()
+        )
 
     def watch_layer(self, layer):
         # We watch geometryChanged and featureAdded on all layers
-        if layer and layer.type() == QgsMapLayerType.VectorLayer and layer not in self.watched_layers:
+        if (
+            layer
+            and layer.type() == QgsMapLayerType.VectorLayer
+            and layer not in self.watched_layers
+        ):
             layer.geometryChanged.connect(self.add_to_changelog)
             layer.featureAdded.connect(self.add_to_changelog)
             layer.editCommandStarted.connect(self.reset_changelog)
@@ -110,11 +111,17 @@ class Plugin:
 
         # Get custom convert to curve tolerance settings
         params = {
-            "DISTANCE": QgsSettings().value("/qgis/digitizing/convert_to_curve_distance_tolerance", 1e-6),
-            "ANGLE": QgsSettings().value("/qgis/digitizing/convert_to_curve_angle_tolerance", 1e-6),
+            "DISTANCE": QgsSettings().value(
+                "/qgis/digitizing/convert_to_curve_distance_tolerance", 1e-6
+            ),
+            "ANGLE": QgsSettings().value(
+                "/qgis/digitizing/convert_to_curve_angle_tolerance", 1e-6
+            ),
         }
 
-        alg = QgsApplication.processingRegistry().createAlgorithmById('native:converttocurves')
+        alg = QgsApplication.processingRegistry().createAlgorithmById(
+            "native:converttocurves"
+        )
         layer = self.iface.activeLayer()
         layer.selectByIds(list(self.changed_fids))
         self._prevent_recursion = True
