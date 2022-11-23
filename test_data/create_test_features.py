@@ -1,8 +1,8 @@
 import math
 
-X = 2600000
-Y = 1200000
-R = 1000
+X = 0
+Y = 0
+R = 10
 
 
 def circular_string(midpoint_f=0.5):
@@ -15,12 +15,12 @@ def circular_string(midpoint_f=0.5):
 vl = QgsVectorLayer("CurvePolygon?crs=epsg:2056", "temp", "memory")
 
 WKTS = [
-    f"CurvePolygon (CompoundCurve ({circular_string(0.25)},({X} {Y + R}, {X} {Y}, {X+R} {Y})))",
-    f"CurvePolygon (CompoundCurve ({circular_string(0.75)},({X} {Y + R}, {X+R} {Y+R}, {X+R} {Y})))",
+    f"CurvePolygon (CompoundCurve ({circular_string(0.45)},({X} {Y + R}, {X} {Y}, {X+R} {Y})))",
+    f"CurvePolygon (CompoundCurve ({circular_string(0.55)},({X} {Y + R}, {X+R} {Y+R}, {X+R} {Y})))",
 ]
 for WKT in WKTS:
     f = QgsFeature()
-    f.setGeometry(QgsGeometry.fromWkt(WKT))
+    f.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
     print(f.geometry())
     vl.dataProvider().addFeature(f)
 

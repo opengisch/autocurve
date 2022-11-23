@@ -36,8 +36,8 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
+from . import settings
 from .log import debug, log
-from .settings import Settings
 
 
 class Plugin:
@@ -75,8 +75,8 @@ class Plugin:
         self.watch_layer(self.iface.activeLayer())
         self.iface.currentLayerChanged.connect(self.watch_layer)
 
-        self.auto_curve_action.setChecked(Settings.autocurve_enabled)
-        self.harmonize_arcs_action.setChecked(Settings.harmonize_enabled)
+        self.auto_curve_action.setChecked(settings.autocurve_enabled())
+        self.harmonize_arcs_action.setChecked(settings.harmonize_enabled())
 
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
@@ -90,10 +90,10 @@ class Plugin:
         self.watched_layers = set()
 
     def toggle_auto_curve(self, checked):
-        Settings.autocurve_enabled = checked
+        settings.set_autocurve_enabled(checked)
 
     def toggle_harmonize_arcs(self, checked):
-        Settings.harmonize_enabled = checked
+        settings.set_harmonize_enabled(checked)
 
     def watch_layer(self, layer):
         # We watch geometryChanged and featureAdded on all layers
@@ -133,11 +133,11 @@ class Plugin:
         layer.selectByIds(list(self.changed_fids))
 
         # Run autocurve procedure
-        if Settings.autocurve_enabled:
+        if settings.autocurve_enabled():
             self.curvify()
 
         # Run harmonize procedure
-        if Settings.harmonize_enabled:
+        if settings.harmonize_enabled():
             self.harmonize_arcs()
 
         # Remove selection
@@ -154,13 +154,17 @@ class Plugin:
             "native:converttocurves"
         )
         AlgorithmExecutor.execute_in_place(
-            alg, {"DISTANCE": Settings.distance, "ANGLE": Settings.angle}
+            alg, {"DISTANCE": settings.distance(), "ANGLE": settings.angle()}
         )
 
     def harmonize_arcs(self):
         """Iterates through all changed features and snaps arc centers to neighbouring arc centers"""
 
         layer = self.iface.activeLayer()
+
+        layer.beginEditCommand("Harmonize arcs")
+
+        debug(f"==== HARMONIZING ARCS ====")
 
         for feature in layer.selectedFeatures():
 
@@ -171,27 +175,29 @@ class Plugin:
 
             # Skip if not curved
             if not arcs_vertices:
-                debug(f"  no arc vertices segments, skipping")
+                debug(f"-- no arc vertices segments, skipping")
                 continue
 
             # Find all neighbours to test against
             request = QgsFeatureRequest()
-            request.setDistanceWithin(feature.geometry(), 0.001)
+            request.setDistanceWithin(feature.geometry(), settings.distance())
             neighbours = layer.getFeatures(request)
 
             # Iterate and check for snapping
             for arc_vertex in arcs_vertices:
-                debug(f"  Doing arc vertex {arc_vertex}")
+                debug(f"-- Doing arc vertex {arc_vertex}")
 
                 for neighbour in neighbours:
                     if neighbour.id() == feature.id():
                         continue
 
-                    debug(f"    testing against ft. {neighbour.id()}")
-
                     for nearby_arc_vertex in self._get_curve_points(
                         neighbour.geometry()
                     ):
+
+                        debug(
+                            f"---- testing against ft. {neighbour.id()} vtx. {nearby_arc_vertex}"
+                        )
 
                         if self._can_snap(
                             feature, arc_vertex, neighbour, nearby_arc_vertex
@@ -203,40 +209,66 @@ class Plugin:
                             success = new_geom.moveVertex(other_vertex, arc_vertex)
                             if not success:
                                 log(f"Error while snaping at {other_vertex}")
-                            layer.dataProvider().changeGeometryValues(
-                                {feature.id(): new_geom}
-                            )
+                            layer.changeGeometry(feature.id(), new_geom)
                             debug(
-                                f"      pt. {nearby_arc_vertex}: SNAPPED TO {other_vertex.asWkt()}"
+                                f"------ pt. {nearby_arc_vertex}: SNAPPED TO {other_vertex.asWkt()}"
                             )
                         else:
-                            debug(f"      pt. {nearby_arc_vertex}: NO SNAP")
+                            debug(f"------ pt. {nearby_arc_vertex}: NO SNAP")
+        layer.endEditCommand()
 
     def _can_snap(self, feature_1, arc_vertex_1, feature_2, arc_vertex_2):
         """Returns whether both given vertices can snap."""
         # For now, we only snap if the start and end point are equal
 
+        debug(
+            f"------ CHECKING [ft. {feature_1.id()} vtx. {arc_vertex_1}] vs [ft. {feature_2.id()} vtx. {arc_vertex_2}]"
+        )
+
         v_1a, v_1c = feature_1.geometry().adjacentVertices(arc_vertex_1)
         v_2a, v_2c = feature_2.geometry().adjacentVertices(arc_vertex_2)
 
+        v_1a = arc_vertex_1 - 1
+        v_1b = arc_vertex_1
+        v_1c = arc_vertex_1 + 1
+        v_2a = arc_vertex_2 - 1
+        v_2b = arc_vertex_2
+        v_2c = arc_vertex_2 + 1
+
         p1a = feature_1.geometry().vertexAt(v_1a)
-        p1b = feature_1.geometry().vertexAt(arc_vertex_1)
+        p1b = feature_1.geometry().vertexAt(v_1b)
         p1c = feature_1.geometry().vertexAt(v_1c)
 
         p2a = feature_2.geometry().vertexAt(v_2a)
-        p2b = feature_1.geometry().vertexAt(arc_vertex_2)
+        p2b = feature_2.geometry().vertexAt(v_2b)
         p2c = feature_2.geometry().vertexAt(v_2c)
 
+        debug(
+            f"------ COMPARING ARC [{p1a.asWkt()} {p1b.asWkt()} {p1c.asWkt()}] vs [{p2a.asWkt()} {p2b.asWkt()} {p2c.asWkt()}]"
+        )
+
         # Test if start and end points are equal
-        if not (p1a == p2a and p1c == p2c) or (p1a == p2c and p1c == p2a):
+        if not (self._almost_equal(p1a, p2a) and self._almost_equal(p1c, p2c)) and not (
+            self._almost_equal(p1a, p2c) and self._almost_equal(p1c, p2a)
+        ):
+            debug(
+                f"------ NO SNAP due to start/end point mismatch [{p1a.asWkt()} {p1c.asWkt()}] vs [{p2a.asWkt()} {p2c.asWkt()}]"
+            )
             return False
 
         # Test if circles are equivalent (same center point within tolerance)
         _, c1x, c1y = QgsGeometryUtils.circleCenterRadius(p1a, p1b, p1c)
         _, c2x, c2y = QgsGeometryUtils.circleCenterRadius(p2a, p2b, p2c)
-        c1 = QgsPoint(c1x, c1y)
-        c2 = QgsPoint(c2x, c2y)
-        return c1.distance(c2) < Settings.distance
+        if not self._almost_equal(QgsPoint(c1x, c1y), QgsPoint(c2x, c2y)):
+            debug(
+                f"------ NO SNAP due to center point distance above tolerance {QgsPoint(c1x, c1y).distance(QgsPoint(c2x, c2y))} [{c1x};{c1y}] vs [{c2x};{c2y}]"
+            )
+            return False
+
+        return True
+
+    def _almost_equal(self, p1, p2):
+        return p1.distance(p2) <= settings.distance()
 
     def _get_curve_points(self, geometry):
         """Returns a list of vertex numbers that are curve points"""
