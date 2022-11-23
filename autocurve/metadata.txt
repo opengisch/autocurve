@@ -6,7 +6,7 @@ version=dev
 author=Opengis
 email=olivier@opengis.ch
 
-about=Adds a toggle that automatically runs the convert to curve algorithm after edit commands such as split or merge.
+about=Adds a toggle that post-processes geometries after edit commands. Currently supports converting to curves and snapping curve midpoints.
 
 tracker=https://github.com/opengisch/curved_split_merge/issues
 repository=https://github.com/opengisch/curved_split_merge
@@ -14,12 +14,14 @@ repository=https://github.com/opengisch/curved_split_merge
 # Recommended items:
 
 hasProcessingProvider=no
-changelog=Version 0.3 (06/10/2020)
+changelog=Version 0.6 (23/11/2022)
+  - FEATURE : add harmonize arcs feature
+Version 0.3 (06/10/2020)
   - FEATURE : restore enabled state on load
 tags=python, vector, curves
 homepage=https://github.com/opengisch/curved_split_merge
 category=Vector
-icon=icon.svg
+icon=icons/autocurve.svg
 experimental=True
 deprecated=False
 

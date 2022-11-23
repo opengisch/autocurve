@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Generator: Adobe Illustrator 24.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+
+<svg
+   version="1.1"
+   id="Layer_1"
+   x="0px"
+   y="0px"
+   viewBox="0 0 24 24"
+   style="enable-background:new 0 0 24 24;"
+   xml:space="preserve"
+   sodipodi:docname="harmonize.svg"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+   id="defs30" /><sodipodi:namedview
+   id="namedview28"
+   pagecolor="#ffffff"
+   bordercolor="#000000"
+   borderopacity="0.25"
+   inkscape:showpageshadow="2"
+   inkscape:pageopacity="0.0"
+   inkscape:pagecheckerboard="0"
+   inkscape:deskcolor="#d1d1d1"
+   showgrid="false"
+   inkscape:zoom="17.4375"
+   inkscape:cx="6.8530466"
+   inkscape:cy="12.845878"
+   inkscape:window-width="1920"
+   inkscape:window-height="1017"
+   inkscape:window-x="-8"
+   inkscape:window-y="-8"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="Layer_1" />
+<style
+   type="text/css"
+   id="style17">
+	.st0{fill:none;stroke:#173C72;stroke-width:3;stroke-linecap:round;stroke-miterlimit:10;}
+	.st1{fill:none;stroke:#767676;stroke-width:2;stroke-linecap:square;stroke-miterlimit:10;}
+	.st2{fill:none;stroke:#767676;stroke-width:1.5;stroke-linecap:square;stroke-miterlimit:10;}
+</style>
+<path
+   class="st0"
+   d="m 9.8179213,22.18248 c 0.8595057,-0.157686 1.7971477,-0.630745 2.5003797,-1.103804 3.203611,-2.128764 4.297528,-6.307449 2.344106,-9.382331 C 12.708985,8.6214644 8.5677319,7.9118764 5.3641201,10.04064 3.4106985,11.380973 2.2386456,13.588581 2.004235,15.638501"
+   id="path19"
+   style="fill:none;fill-opacity:1;stroke:#767676;stroke-width:2;stroke-dasharray:none;stroke-opacity:1" />
+
+
+<g
+   id="g1942"
+   transform="translate(1.7204301,-0.22939068)"><line
+     class="st2"
+     x1="6.0783143"
+     y1="1.6890689"
+     x2="8.9783163"
+     y2="4.489069"
+     id="line23" /><polyline
+     class="st2"
+     points="14,13.2 14,10.7 11.6,10.7 "
+     id="polyline25"
+     transform="rotate(90,14.651971,7.1159501)" /></g><g
+   id="g1942-6"
+   transform="rotate(180,14.457373,8.5388255)"><line
+     class="st2"
+     x1="6.0783143"
+     y1="1.6890689"
+     x2="8.9783163"
+     y2="4.489069"
+     id="line23-1"
+     style="fill:none;stroke:#767676;stroke-width:1.5;stroke-linecap:square;stroke-miterlimit:10" /><polyline
+     class="st2"
+     points="14,13.2 14,10.7 11.6,10.7 "
+     id="polyline25-7"
+     transform="rotate(90,14.651971,7.1159501)"
+     style="fill:none;stroke:#767676;stroke-width:1.5;stroke-linecap:square;stroke-miterlimit:10" /></g>
+<circle
+   style="fill:#173c72;fill-opacity:1;stroke:none;stroke-width:2;stroke-dasharray:none;stroke-opacity:1"
+   id="path1905"
+   cx="13.706093"
+   cy="10.379929"
+   r="2.6763611" /></svg>

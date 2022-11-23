@@ -24,9 +24,19 @@ import os.path
 
 import sip
 from processing.gui import AlgorithmExecutor
-from qgis.core import QgsApplication, QgsMapLayerType, QgsSettings
+from qgis.core import (
+    QgsApplication,
+    QgsFeatureRequest,
+    QgsGeometry,
+    QgsGeometryUtils,
+    QgsMapLayerType,
+    QgsPoint,
+    QgsVertexId,
+)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+
+from . import settings
 
 
 class Plugin:
@@ -34,8 +44,10 @@ class Plugin:
 
     def __init__(self, iface):
         self.iface = iface
-        self.plugin_dir = os.path.dirname(__file__)
         self.auto_curve_enabled = False
+
+    def _icon(self, name):
+        return QIcon(os.path.join(os.path.dirname(__file__), "icons", name))
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -43,13 +55,18 @@ class Plugin:
         self.toolbar = self.iface.addToolBar("Autocurve")
 
         self.auto_curve_action = QAction(
-            QIcon(os.path.join(self.plugin_dir, "icon.svg")),
-            "Autocurve",
-            self.toolbar,
+            self._icon("autocurve.svg"), "Autocurve", self.toolbar
         )
         self.auto_curve_action.setCheckable(True)
         self.auto_curve_action.toggled.connect(self.toggle_auto_curve)
         self.toolbar.addAction(self.auto_curve_action)
+
+        self.harmonize_arcs_action = QAction(
+            self._icon("harmonize.svg"), "Harmonize arcs", self.toolbar
+        )
+        self.harmonize_arcs_action.setCheckable(True)
+        self.harmonize_arcs_action.toggled.connect(self.toggle_harmonize_arcs)
+        self.toolbar.addAction(self.harmonize_arcs_action)
 
         self.watched_layers = set()
         self._prevent_recursion = False
@@ -57,8 +74,8 @@ class Plugin:
         self.watch_layer(self.iface.activeLayer())
         self.iface.currentLayerChanged.connect(self.watch_layer)
 
-        enabled = QgsSettings().value("autocurve/enabled", None) == "true"
-        self.auto_curve_action.setChecked(enabled)
+        self.auto_curve_action.setChecked(settings.autocurve_enabled())
+        self.harmonize_arcs_action.setChecked(settings.harmonize_enabled())
 
     def unload(self):
         self.iface.mainWindow().removeToolBar(self.toolbar)
@@ -68,14 +85,14 @@ class Plugin:
                 layer.geometryChanged.disconnect(self.add_to_changelog)
                 layer.featureAdded.disconnect(self.add_to_changelog)
                 layer.editCommandStarted.connect(self.reset_changelog)
-                layer.editCommandEnded.connect(self.curvify)
+                layer.editCommandEnded.connect(self.run_after_edit_command)
         self.watched_layers = set()
 
     def toggle_auto_curve(self, checked):
-        self.auto_curve_enabled = checked
-        QgsSettings().setValue(
-            "autocurve/enabled", str(self.auto_curve_enabled).lower()
-        )
+        settings.set_autocurve_enabled(checked)
+
+    def toggle_harmonize_arcs(self, checked):
+        settings.set_harmonize_enabled(checked)
 
     def watch_layer(self, layer):
         # We watch geometryChanged and featureAdded on all layers
@@ -87,7 +104,7 @@ class Plugin:
             layer.geometryChanged.connect(self.add_to_changelog)
             layer.featureAdded.connect(self.add_to_changelog)
             layer.editCommandStarted.connect(self.reset_changelog)
-            layer.editCommandEnded.connect(self.curvify)
+            layer.editCommandEnded.connect(self.run_after_edit_command)
             self.watched_layers.add(layer)
 
     def reset_changelog(self):
@@ -96,10 +113,8 @@ class Plugin:
     def add_to_changelog(self, fid, geometry=None):
         self.changed_fids.add(fid)
 
-    def curvify(self):
-
-        if not self.auto_curve_enabled:
-            return
+    def run_after_edit_command(self):
+        """This is run after an edit command finished"""
 
         if not self.changed_fids:
             # No geometries have changed, no need to run
@@ -109,22 +124,129 @@ class Plugin:
             # Avoiding recursion as the algorithm will also trigger geometryChanged
             return
 
-        # Get custom convert to curve tolerance settings
-        params = {
-            "DISTANCE": QgsSettings().value(
-                "/qgis/digitizing/convert_to_curve_distance_tolerance", 1e-6
-            ),
-            "ANGLE": QgsSettings().value(
-                "/qgis/digitizing/convert_to_curve_angle_tolerance", 1e-6
-            ),
-        }
+        # Avoid recursion as the following code will trigger geometryChanged
+        self._prevent_recursion = True
 
+        # Select affected polygons
+        layer = self.iface.activeLayer()
+        layer.selectByIds(list(self.changed_fids))
+
+        # Run autocurve procedure
+        if settings.autocurve_enabled():
+            self.curvify()
+
+        # Run harmonize procedure
+        if settings.harmonize_enabled():
+            self.harmonize_arcs()
+
+        # Remove selection
+        layer.removeSelection()
+
+        # Disable recursion prevention
+        self._prevent_recursion = False
+
+    def curvify(self):
+        """Runs the convert to curves algorithm in place"""
+
+        # Run converttocurves in-place
         alg = QgsApplication.processingRegistry().createAlgorithmById(
             "native:converttocurves"
         )
+        AlgorithmExecutor.execute_in_place(
+            alg, {"DISTANCE": settings.distance(), "ANGLE": settings.angle()}
+        )
+
+    def harmonize_arcs(self):
+        """Iterates through all changed features and snaps arc centers to neighbouring arc centers"""
+
         layer = self.iface.activeLayer()
-        layer.selectByIds(list(self.changed_fids))
-        self._prevent_recursion = True
-        AlgorithmExecutor.execute_in_place(alg, params)
-        self._prevent_recursion = False
-        layer.removeSelection()
+
+        layer.beginEditCommand("Harmonize arcs")
+
+        for feature in layer.selectedFeatures():
+
+            # Find all arcs points
+            arcs_vertices = self._get_curve_points(feature.geometry())
+
+            # Skip if not curved
+            if not arcs_vertices:
+                continue
+
+            # Find all neighbours to test against
+            request = QgsFeatureRequest()
+            request.setDistanceWithin(feature.geometry(), settings.distance())
+            neighbours = layer.getFeatures(request)
+
+            # Iterate on all arc vertics, combinined will all neighbouring arc vertices
+            for arc_vertex in arcs_vertices:
+
+                for neighbour in neighbours:
+
+                    if neighbour.id() == feature.id():
+                        # don't compare about itself
+                        continue
+
+                    for nearby_arc_vertex in self._get_curve_points(
+                        neighbour.geometry()
+                    ):
+                        # Perform the actual snapping test
+                        if self._can_snap(
+                            feature, arc_vertex, neighbour, nearby_arc_vertex
+                        ):
+                            # Perform the actual snapping
+                            other_vertex = neighbour.geometry().vertexAt(
+                                nearby_arc_vertex
+                            )
+                            new_geom = QgsGeometry(feature.geometry())
+                            success = new_geom.moveVertex(other_vertex, arc_vertex)
+                            assert success
+                            layer.changeGeometry(feature.id(), new_geom)
+        layer.endEditCommand()
+
+    def _can_snap(self, feature_1, arc_vertex_1, feature_2, arc_vertex_2):
+        """Returns whether both given arc vertices can snap."""
+
+        # Get the 3 points that form both arcs
+        v_1b = arc_vertex_1
+        v_2b = arc_vertex_2
+        v_1a, v_1c = feature_1.geometry().adjacentVertices(v_1b)
+        v_2a, v_2c = feature_2.geometry().adjacentVertices(v_2b)
+
+        p1a = feature_1.geometry().vertexAt(v_1a)
+        p1b = feature_1.geometry().vertexAt(v_1b)
+        p1c = feature_1.geometry().vertexAt(v_1c)
+
+        p2a = feature_2.geometry().vertexAt(v_2a)
+        p2b = feature_2.geometry().vertexAt(v_2b)
+        p2c = feature_2.geometry().vertexAt(v_2c)
+
+        # Test if start and end points are equal
+        if not (self._almost_equal(p1a, p2a) and self._almost_equal(p1c, p2c)) and not (
+            self._almost_equal(p1a, p2c) and self._almost_equal(p1c, p2a)
+        ):
+            return False
+
+        # Test if circles are equivalent (same center point within tolerance)
+        _, c1x, c1y = QgsGeometryUtils.circleCenterRadius(p1a, p1b, p1c)
+        _, c2x, c2y = QgsGeometryUtils.circleCenterRadius(p2a, p2b, p2c)
+        if not self._almost_equal(QgsPoint(c1x, c1y), QgsPoint(c2x, c2y)):
+            return False
+
+        return True
+
+    def _almost_equal(self, p1, p2):
+        """Test point equality with tolerance"""
+        return p1.distance(p2) <= settings.distance()
+
+    def _get_curve_points(self, geometry):
+        """Returns a list of vertex numbers that are curve points"""
+        curved_vertices = []
+        vertex_id = QgsVertexId()
+        while True:
+            found, point = geometry.constGet().nextVertex(vertex_id)
+            if not found:
+                break
+            if vertex_id.type is QgsVertexId.VertexType.Curve:
+                curved_vertices.append(geometry.vertexNrFromVertexId(vertex_id))
+
+        return curved_vertices
