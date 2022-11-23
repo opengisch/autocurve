@@ -12,21 +12,29 @@ def circular_string(midpoint_f=0.5):
     return f"CircularString ({points_coords})"
 
 
-vl = QgsVectorLayer("CurvePolygon?crs=epsg:2056", "temp", "memory")
+WKTS_PER_TYPE = {
+    "CurvePolygon": [
+        f"CurvePolygon (CompoundCurve ({circular_string(0.45)},({X} {Y + R}, {X} {Y}, {X+R} {Y})))",
+        f"CurvePolygon (CompoundCurve ({circular_string(0.55)},({X} {Y + R}, {X+R} {Y+R}, {X+R} {Y})))",
+    ],
+    "CompoundCurve": [
+        f"CompoundCurve (({X+R/2} {Y}, {X+R} {Y}), {circular_string(0.45)},({X} {Y + R}, {X} {Y+R/2}))",
+        f"CompoundCurve (({X+R} {Y+R/2}, {X+R} {Y}),{circular_string(0.55)},({X} {Y + R}, {X+R/2} {Y+R}))",
+    ],
+}
 
-WKTS = [
-    f"CurvePolygon (CompoundCurve ({circular_string(0.45)},({X} {Y + R}, {X} {Y}, {X+R} {Y})))",
-    f"CurvePolygon (CompoundCurve ({circular_string(0.55)},({X} {Y + R}, {X+R} {Y+R}, {X+R} {Y})))",
-]
-for WKT in WKTS:
-    f = QgsFeature()
-    f.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
-    print(f.geometry())
-    vl.dataProvider().addFeature(f)
+for layer_type, WKTS in WKTS_PER_TYPE.items():
+    vl = QgsVectorLayer(f"{layer_type}?crs=epsg:2056", "temp", "memory")
 
-QgsProject.instance().addMapLayer(vl)
+    for WKT in WKTS:
+        f = QgsFeature()
+        f.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
+        print(f.geometry())
+        vl.dataProvider().addFeature(f)
 
-# path = os.path.join(os.path.dirname(__file__), "test_layer_style.qml")
-path = r"D:\Dropbox\Code\autocurve\test_data\test_layer_style.qml"
-vl.loadNamedStyle(path)
-vl.triggerRepaint()
+    QgsProject.instance().addMapLayer(vl)
+
+    # path = os.path.join(os.path.dirname(__file__), "test_data" , f"style-{layer_type}.qml")
+    path = f"D:\\Dropbox\\Code\\autocurve\\test_data\\style-{layer_type}.qml"
+    vl.loadNamedStyle(path)
+    vl.triggerRepaint()
