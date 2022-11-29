@@ -177,6 +177,9 @@ class Plugin:
             request.setDistanceWithin(feature.geometry(), settings.distance())
             neighbours = list(layer.getFeatures(request))
 
+            # This will hold the new geometry if it needs changes
+            new_geom = None
+
             # Iterate on all arc vertics, combinined will all neighbouring arc vertices
             for arc_vertex in arcs_vertices:
 
@@ -194,13 +197,19 @@ class Plugin:
                             feature, arc_vertex, neighbour, nearby_arc_vertex
                         ):
                             # Perform the actual snapping
-                            other_vertex = neighbour.geometry().vertexAt(
-                                nearby_arc_vertex
-                            )
-                            new_geom = QgsGeometry(feature.geometry())
-                            success = new_geom.moveVertex(other_vertex, arc_vertex)
+                            toPos = neighbour.geometry().vertexAt(nearby_arc_vertex)
+
+                            # Clone the geometry if not already cloned
+                            if new_geom is None:
+                                new_geom = QgsGeometry(feature.geometry())
+
+                            success = new_geom.moveVertex(toPos, arc_vertex)
                             assert success
-                            layer.changeGeometry(feature.id(), new_geom)
+
+            # Apply the changed geometry
+            if new_geom is not None:
+                layer.changeGeometry(feature.id(), new_geom)
+
         layer.endEditCommand()
 
     def _can_snap(self, feature_1, arc_vertex_1, feature_2, arc_vertex_2):
