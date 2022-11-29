@@ -175,7 +175,7 @@ class Plugin:
             # Find all neighbours to test against
             request = QgsFeatureRequest()
             request.setDistanceWithin(feature.geometry(), settings.distance())
-            neighbours = layer.getFeatures(request)
+            neighbours = list(layer.getFeatures(request))
 
             # Iterate on all arc vertics, combinined will all neighbouring arc vertices
             for arc_vertex in arcs_vertices:
