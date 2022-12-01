@@ -16,8 +16,21 @@ The most probable cause is that the tolerance to detect curves is too low. This 
 
 ## Contribute
 
-Pull requests welcome. Before commiting, please install pre-commit to take care of code style.
+Pull requests welcome.
+
+### Code style
+
+Before commiting, please install pre-commit to take care of code style.
 ```
 pip install pre-commit
 pre-commit install
 ```
+
+### Tests
+
+Run the integrations tests with docker
+```bash
+docker-compose up
+```
+
+By default, the GUI should be visible, showing visually the tests outputs. On Windows, run the command above under WSL2 to see output.
