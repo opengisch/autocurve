@@ -30,7 +30,5 @@ pre-commit install
 
 Run the integrations tests with docker
 ```bash
-docker-compose up
+docker-compose run tests
 ```
-
-By default, the GUI should be visible, showing visually the tests outputs. On Windows, run the command above under WSL2 to see output.

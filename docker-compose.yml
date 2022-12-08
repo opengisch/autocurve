@@ -8,12 +8,10 @@ services:
       - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
       # include default config (enabling the plugin)
       - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
-      # include initialisation script (test launcher)
-      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
       # mount the test folder
-      - ./tests:/tests_directory
+      - ./tests/tests_directory:/tests_directory
       # mount the x11 socket
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
       DISPLAY: :0
-    command: qgis
+    command: python3 /tests_directory/autocurve_tests.py
