@@ -1,12 +1,46 @@
 import math
+import os
+from datetime import datetime
 
-from qgis.core import QgsFeature, QgsGeometry, QgsProject, QgsVectorLayer
+from qgis.core import (
+    QgsApplication,
+    QgsFeature,
+    QgsGeometry,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
+from qgis.utils import iface
 
-start_app()
+headless = os.environ.get("QT_QPA_PLATFORM") == "offscreen"
+
+if headless:
+    start_app()
 
 
 class TestAutocurve(unittest.TestCase):
+    def setUp(self):
+        if headless:
+            return
+        iface.messageBar().pushMessage(
+            "Info",
+            f"Running test `{self._testMethodName}`",
+            duration=0,
+        )
+
+    def tearDown(self):
+        if headless:
+            return
+        self._sleep()
+        iface.messageBar().clearWidgets()
+
+    def _sleep(self, seconds=5):
+        if headless:
+            return
+        t = datetime.now()
+        while (datetime.now() - t).total_seconds() < seconds:
+            QgsApplication.processEvents()
+
     def test_center_points(self):
         # Create two shapes that have a common arc with a different center point
         CP_A = [math.cos(math.radians(30)), math.sin(math.radians(30))]
@@ -21,6 +55,9 @@ class TestAutocurve(unittest.TestCase):
             feat.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
             vl.dataProvider().addFeature(feat)
         QgsProject.instance().addMapLayer(vl)
+
+        # Select the layer
+        iface.setActiveLayer(vl)
 
         # The center points are different
         self.assertNotEqual(
