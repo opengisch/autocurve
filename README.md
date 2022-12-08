@@ -30,5 +30,9 @@ pre-commit install
 
 Run the integrations tests with docker
 ```bash
+# run tests (headless)
 docker-compose run tests
+
+# run tests (gui on host, on windows you must do that from WSL)
+docker-compose run tests_gui
 ```
