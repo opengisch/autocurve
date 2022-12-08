@@ -10,7 +10,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
-from qgis.utils import iface
+from qgis.utils import iface, plugins
 
 headless = os.environ.get("QT_QPA_PLATFORM") == "offscreen"
 
@@ -41,7 +41,18 @@ class TestAutocurve(unittest.TestCase):
         while (datetime.now() - t).total_seconds() < seconds:
             QgsApplication.processEvents()
 
+    def _move_vertex(self, vl, feat_id, vtx_id, x, y):
+        vl.startEditing()
+        vl.beginEditCommand("moving vertex")
+        vl.moveVertex(x, y, feat_id, vtx_id)
+        vl.endEditCommand()
+        vl.commitChanges()
+
     def test_center_points(self):
+        # Disable the actions
+        plugins["autocurve"].auto_curve_action.setChecked(False)
+        plugins["autocurve"].harmonize_arcs_action.setChecked(False)
+
         # Create two shapes that have a common arc with a different center point
         CP_A = [math.cos(math.radians(30)), math.sin(math.radians(30))]
         CP_B = [math.cos(math.radians(60)), math.sin(math.radians(60))]
@@ -56,6 +67,8 @@ class TestAutocurve(unittest.TestCase):
             vl.dataProvider().addFeature(feat)
         QgsProject.instance().addMapLayer(vl)
 
+        self._sleep()
+
         # Select the layer
         iface.setActiveLayer(vl)
 
@@ -66,11 +79,9 @@ class TestAutocurve(unittest.TestCase):
         )
 
         # Edit a feature with harmonize_arcs disabled
-        # plugins["autocurve"].toggle_harmonize_arcs(checked=False)  # TODO: somehow load the plugin
-        vl.startEditing()
-        vl.moveVertex(-0.1, -0.1, 1, 0)
-        vl.triggerRepaint()
-        vl.commitChanges()
+        self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.1, y=-0.1)
+
+        self._sleep()
 
         # The center points should still be different
         self.assertNotEqual(
@@ -78,12 +89,11 @@ class TestAutocurve(unittest.TestCase):
             vl.getFeature(2).geometry().vertexAt(2),
         )
 
-        # Edit a feature with harmonize_arcs disabled
-        # plugins["autocurve"].toggle_harmonize_arcs(checked=True)  # TODO: somehow load the plugin
-        vl.startEditing()
-        vl.moveVertex(-0.2, -0.2, 1, 0)
-        vl.triggerRepaint()
-        vl.commitChanges()
+        # Edit a feature with harmonize_arcs enabled
+        plugins["autocurve"].harmonize_arcs_action.setChecked(True)
+        self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.2, y=-0.2)
+
+        self._sleep()
 
         # The center points should now be the same
         self.assertEqual(
