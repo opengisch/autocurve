@@ -1,36 +1,35 @@
 version: "3"
 
+# Reusable base configuration for running tests
+x-tests-base:
+  &tests-base
+  image: opengisch/qgis:3.22.12-focal
+  volumes:
+    # mount the plugin
+    - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
+    # include default config (enabling the plugin)
+    - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
+    # mount the test folder
+    - ./tests/tests_directory:/tests_directory
+    # include initialisation script (test launcher in QGIS)
+    - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+    # mount the x11 socket to forward display to host
+    - /tmp/.X11-unix:/tmp/.X11-unix
+  command: qgis
+
 services:
 
+  # Configuration for running tests in headless (with a virtual screen)
   tests:
-    image: opengisch/qgis:3.22.12-focal
-    volumes:
-      # mount the plugin
-      - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
-      # include default config (enabling the plugin)
-      - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
-      # mount the test folder
-      - ./tests/tests_directory:/tests_directory
-      # include initialisation script (test launcher in QGIS)
-      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+    <<: *tests-base
     environment:
       AUTOCURVE_HEADLESS_TESTS: "true"
-    init: true
-    command: xvfb-run qgis
+    init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
+    entrypoint: xvfb-run
 
-  tests_gui:
-    image: opengisch/qgis:3.22.12-focal
-    volumes:
-      # mount the plugin
-      - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
-      # include default config (enabling the plugin)
-      - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
-      # mount the test folder
-      - ./tests/tests_directory:/tests_directory
-      # include initialisation script (test launcher in QGIS)
-      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
-      # mount the x11 socket to forward display to host
-      - /tmp/.X11-unix:/tmp/.X11-unix
+  # Configuration for running tests with visual feedback (through the mounted x11 socket)
+  tests_visual:
+    <<: *tests-base
     environment:
+      AUTOCURVE_HEADLESS_TESTS: "false"
       DISPLAY: :0
-    command: qgis

@@ -34,5 +34,5 @@ Run the integrations tests with docker
 docker-compose run tests
 
 # run tests (gui on host, on windows you must do that from WSL)
-docker-compose run tests_gui
+docker-compose run tests_visual
 ```
