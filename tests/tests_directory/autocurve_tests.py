@@ -9,19 +9,14 @@ from qgis.core import (
     QgsProject,
     QgsVectorLayer,
 )
-from qgis.testing import start_app, unittest
+from qgis.testing import unittest
 from qgis.utils import iface, plugins
 
-headless = os.environ.get("QT_QPA_PLATFORM") == "offscreen"
-
-if headless:
-    start_app()
+headless = os.environ.get("AUTOCURVE_HEADLESS_TESTS") == "true"
 
 
 class TestAutocurve(unittest.TestCase):
     def setUp(self):
-        if headless:
-            return
         iface.messageBar().pushMessage(
             "Info",
             f"Running test `{self._testMethodName}`",
@@ -29,12 +24,11 @@ class TestAutocurve(unittest.TestCase):
         )
 
     def tearDown(self):
-        if headless:
-            return
-        self._sleep()
+        self.wait_for_visual_output()
         iface.messageBar().clearWidgets()
 
-    def _sleep(self, seconds=5):
+    def wait_for_visual_output(self, seconds=5):
+        """Waits a little so we can see what happens when running the tests with GUI"""
         if headless:
             return
         t = datetime.now()
@@ -67,7 +61,7 @@ class TestAutocurve(unittest.TestCase):
             vl.dataProvider().addFeature(feat)
         QgsProject.instance().addMapLayer(vl)
 
-        self._sleep()
+        self.wait_for_visual_output()
 
         # Select the layer
         iface.setActiveLayer(vl)
@@ -81,7 +75,7 @@ class TestAutocurve(unittest.TestCase):
         # Edit a feature with harmonize_arcs disabled
         self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.1, y=-0.1)
 
-        self._sleep()
+        self.wait_for_visual_output()
 
         # The center points should still be different
         self.assertNotEqual(
@@ -93,7 +87,7 @@ class TestAutocurve(unittest.TestCase):
         plugins["autocurve"].harmonize_arcs_action.setChecked(True)
         self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.2, y=-0.2)
 
-        self._sleep()
+        self.wait_for_visual_output()
 
         # The center points should now be the same
         self.assertEqual(
@@ -103,4 +97,6 @@ class TestAutocurve(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    raise Exception(
+        "This script cannot be run directly, it must be run from within QGIS desktop."
+    )

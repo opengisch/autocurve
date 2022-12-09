@@ -1,7 +1,7 @@
 version: "3"
 
-
 services:
+
   tests:
     image: opengisch/qgis:3.22.12-focal
     volumes:
@@ -11,9 +11,12 @@ services:
       - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
       # mount the test folder
       - ./tests/tests_directory:/tests_directory
+      # include initialisation script (test launcher in QGIS)
+      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
     environment:
-      QT_QPA_PLATFORM: offscreen
-    command: python3 /tests_directory/autocurve_tests.py
+      AUTOCURVE_HEADLESS_TESTS: "true"
+    init: true
+    command: xvfb-run qgis
 
   tests_gui:
     image: opengisch/qgis:3.22.12-focal
