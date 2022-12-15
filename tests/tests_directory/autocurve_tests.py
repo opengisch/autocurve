@@ -17,20 +17,29 @@ headless = os.environ.get("AUTOCURVE_HEADLESS_TESTS") == "true"
 
 class TestAutocurve(unittest.TestCase):
     def setUp(self):
-        iface.messageBar().pushMessage(
-            "Info",
-            f"Running test `{self._testMethodName}`",
-            duration=0,
-        )
+        self.__feedback_step = 0
+        self.feedback("starting")
 
     def tearDown(self):
-        self.wait_for_visual_output()
+        self.feedback("finished")
         iface.messageBar().clearWidgets()
 
-    def wait_for_visual_output(self, seconds=5):
+    def feedback(self, message=None, seconds=2):
         """Waits a little so we can see what happens when running the tests with GUI"""
         if headless:
             return
+
+        self.__feedback_step += 1
+        if not message:
+            message = f"step {self.__feedback_step}"
+
+        iface.messageBar().clearWidgets()
+        iface.messageBar().pushMessage(
+            "Info",
+            f"Test `{self._testMethodName}`: {message}",
+            duration=0,
+        )
+
         t = datetime.now()
         while (datetime.now() - t).total_seconds() < seconds:
             QgsApplication.processEvents()
@@ -61,7 +70,7 @@ class TestAutocurve(unittest.TestCase):
             vl.dataProvider().addFeature(feat)
         QgsProject.instance().addMapLayer(vl)
 
-        self.wait_for_visual_output()
+        self.feedback()
 
         # Select the layer
         iface.setActiveLayer(vl)
@@ -75,7 +84,7 @@ class TestAutocurve(unittest.TestCase):
         # Edit a feature with harmonize_arcs disabled
         self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.1, y=-0.1)
 
-        self.wait_for_visual_output()
+        self.feedback()
 
         # The center points should still be different
         self.assertNotEqual(
@@ -87,7 +96,7 @@ class TestAutocurve(unittest.TestCase):
         plugins["autocurve"].harmonize_arcs_action.setChecked(True)
         self._move_vertex(vl, feat_id=1, vtx_id=0, x=-0.2, y=-0.2)
 
-        self.wait_for_visual_output()
+        self.feedback()
 
         # The center points should now be the same
         self.assertEqual(
