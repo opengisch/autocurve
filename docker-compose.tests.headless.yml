@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  tests:
+    image: opengisch/qgis:3.22.12-focal
+    volumes:
+      # mount the plugin
+      - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
+      # include default config (enabling the plugin)
+      - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
+      # mount the test folder
+      - ./tests/tests_directory:/tests_directory
+      # include initialisation script (test launcher in QGIS)
+      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+    environment:
+      AUTOCURVE_HEADLESS_TESTS: "true"
+    init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
+    entrypoint: xvfb-run
+    command: qgis

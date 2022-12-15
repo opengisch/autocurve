@@ -7,6 +7,7 @@ It should be mounted to ~/.local/share/QGIS/QGIS3/startup.py to run the tests on
 import sys
 import unittest
 
+from qgis.core import QgsApplication
 from qgis.PyQt.QtCore import qDebug
 from qgis.utils import iface
 
@@ -36,6 +37,7 @@ def run_tests():
     # QCoreApplication.exit(not success)
 
     # crashes with `double free or corruption (out)` -> exit code 127
+    QgsApplication.instance().exitQgis()
     sys.exit(not success)
 
 
