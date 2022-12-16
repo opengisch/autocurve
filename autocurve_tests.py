@@ -24,7 +24,7 @@ class TestAutocurve(unittest.TestCase):
         self.feedback("finished")
         iface.messageBar().clearWidgets()
 
-    def feedback(self, message=None, seconds=2):
+    def feedback(self, message=None, seconds=1):
         """Waits a little so we can see what happens when running the tests with GUI"""
         if headless:
             return

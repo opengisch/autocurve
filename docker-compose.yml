@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+
+  # Base service (do not use tjos)
+  __base:
+    image: opengisch/qgis:3.28-jammy
+    volumes:
+      # mount the plugin
+      - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
+      # include default config (enabling the plugin)
+      - ./testing/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
+      # include initialisation script (test launcher in QGIS)
+      - ./testing/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+      # include entrypoint script (test launcher in QGIS)
+      - ./testing/runner.py:/runner.py
+      # mount the test module
+      - ./autocurve_tests.py:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests.py
+    entrypoint: python3 /runner.py
+
+  # Base service (do not use)
+  tests-gui:
+    extends: __base
+    volumes:
+      # mount the x11 socket to forward display to host
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      AUTOCURVE_HEADLESS_TESTS: "false"
+      DISPLAY: :0
+    command: qgis
+
+  tests-headless:
+    extends: __base
+    environment:
+      AUTOCURVE_HEADLESS_TESTS: "true"
+    command: xvfb-run qgis
