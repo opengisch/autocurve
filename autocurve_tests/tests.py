@@ -103,9 +103,3 @@ class TestAutocurve(unittest.TestCase):
             vl.getFeature(1).geometry().vertexAt(2),
             vl.getFeature(2).geometry().vertexAt(2),
         )
-
-
-if __name__ == "__main__":
-    raise Exception(
-        "This script cannot be run directly, it must be run from within QGIS desktop."
-    )

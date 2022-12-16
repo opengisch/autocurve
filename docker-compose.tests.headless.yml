@@ -2,21 +2,20 @@ version: "3"
 
 services:
   tests:
-    image: opengisch/qgis:3.22.12-focal
+    image: opengisch/qgis:3.28-jammy
     volumes:
       # mount the plugin
       - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
       # include default config (enabling the plugin)
-      - ./tests/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
-      # mount the test folder
-      - ./tests/tests_directory:/tests_directory
+      - ./testing/QGIS3.ini:/root/.local/share/QGIS/QGIS3/profiles/default/QGIS/QGIS3.ini
       # include initialisation script (test launcher in QGIS)
-      - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+      - ./testing/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
       # include entrypoint script (test launcher in QGIS)
-      - ./tests/tests_runner.sh:/tests_runner.sh
+      - ./testing/tests_runner.sh:/tests_runner.sh
+      # mount the test folder
+      - ./autocurve_tests:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests
     environment:
       AUTOCURVE_HEADLESS_TESTS: "true"
       # QT_QPA_PLATFORM: offscreen
       DISPLAY: ":0"
-    entrypoint: bash /tests_runner.sh
-    command: xvfb-run qgis
+    command: /tests_runner.sh xvfb-run qgis
