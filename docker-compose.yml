@@ -15,7 +15,7 @@ services:
       # include entrypoint script (test launcher in QGIS)
       - ./testing/runner.py:/runner.py
       # mount the test module
-      - ./autocurve_tests.py:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests.py
+      - ./autocurve_tests:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests
     environment:
       AUTOCURVE_HEADLESS_TESTS: "true"
     init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
@@ -31,4 +31,5 @@ services:
     environment:
       AUTOCURVE_HEADLESS_TESTS: "false"
       DISPLAY: :0
+    init: false
     entrypoint: ""

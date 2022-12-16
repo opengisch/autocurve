@@ -1,6 +1,7 @@
 import math
 import os
 from datetime import datetime
+from pathlib import Path
 
 from qgis.core import (
     QgsApplication,
@@ -15,7 +16,7 @@ from qgis.utils import iface, plugins
 headless = os.environ.get("AUTOCURVE_HEADLESS_TESTS") == "true"
 
 
-class TestAutocurve(unittest.TestCase):
+class IntegrationTest(unittest.TestCase):
     def setUp(self):
         self.__feedback_step = 0
         self.feedback("starting")
@@ -70,6 +71,8 @@ class TestAutocurve(unittest.TestCase):
             feat = QgsFeature()
             feat.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
             vl.dataProvider().addFeature(feat)
+
+        vl.loadNamedStyle(str(Path(__file__).parent / "curvepolygon.qml"))
         QgsProject.instance().addMapLayer(vl)
 
         self.feedback()
