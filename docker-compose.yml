@@ -2,8 +2,8 @@ version: "3"
 
 services:
 
-  # Base service (do not use tjos)
-  __base:
+  # Runs tests (headless)
+  tests:
     image: opengisch/qgis:3.28-jammy
     volumes:
       # mount the plugin
@@ -16,21 +16,19 @@ services:
       - ./testing/runner.py:/runner.py
       # mount the test module
       - ./autocurve_tests.py:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests.py
-    entrypoint: python3 /runner.py
+    environment:
+      AUTOCURVE_HEADLESS_TESTS: "true"
+    init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
+    entrypoint: xvfb-run
+    command: python3 /runner.py
 
-  # Base service (do not use)
+  # Runs tests (with visual feedback)
   tests-gui:
-    extends: __base
+    extends: tests
     volumes:
       # mount the x11 socket to forward display to host
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
       AUTOCURVE_HEADLESS_TESTS: "false"
       DISPLAY: :0
-    command: qgis
-
-  tests-headless:
-    extends: __base
-    environment:
-      AUTOCURVE_HEADLESS_TESTS: "true"
-    command: xvfb-run qgis
+    entrypoint: ""

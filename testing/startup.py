@@ -15,16 +15,24 @@ import autocurve_tests
 # Foward python output to console
 sys.stdout.write = lambda text: qDebug(text.strip())
 
+print("Waiting for initialisation...")
+
 
 def run_tests():
+
+    print("Starting tests...")
+
     # Run the tests
     test = unittest.main(module=autocurve_tests, exit=False)
 
     # To workaround missing exit code (see below), so we print the result value and check for it in the runner
     if test.result.wasSuccessful():
-        print("__TESTS_SUCCESSFUL__")
+        print("__SUCCESS__")
+    else:
+        print("__FAILURE__")
 
     # Exit code here is lost, since this crashes QGIS with segfault
+    print("notice: following `QGIS died on signal 11` can be ignored.")
     sys.exit(0 if test.result.wasSuccessful() else 1)
 
 
