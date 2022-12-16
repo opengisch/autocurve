@@ -23,6 +23,8 @@ class TestAutocurve(unittest.TestCase):
     def tearDown(self):
         self.feedback("finished")
         iface.messageBar().clearWidgets()
+        QgsProject.instance().removeAllMapLayers()
+        QgsProject.instance().setDirty(False)
 
     def feedback(self, message=None, seconds=1):
         """Waits a little so we can see what happens when running the tests with GUI"""

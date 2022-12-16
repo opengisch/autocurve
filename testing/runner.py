@@ -6,7 +6,11 @@ accordingly to test results, working around the issue about QGIS crashing on exi
 import subprocess
 import sys
 
-process = subprocess.run(sys.argv[1:], capture_output=True, encoding="utf-8")
+args = sys.argv[1:]
+
+print(f"Running `{' '.join(args)}`...")
+
+process = subprocess.run(args, capture_output=True, encoding="utf-8")
 
 print(process.stdout)
 
