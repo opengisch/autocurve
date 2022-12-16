@@ -12,8 +12,11 @@ services:
       - ./tests/tests_directory:/tests_directory
       # include initialisation script (test launcher in QGIS)
       - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+      # include entrypoint script (test launcher in QGIS)
+      - ./tests/tests_runner.sh:/tests_runner.sh
     environment:
       AUTOCURVE_HEADLESS_TESTS: "true"
-    init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
-    entrypoint: xvfb-run
-    command: qgis
+      # QT_QPA_PLATFORM: offscreen
+      DISPLAY: ":0"
+    entrypoint: bash /tests_runner.sh
+    command: xvfb-run qgis

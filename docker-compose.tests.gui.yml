@@ -12,9 +12,12 @@ services:
       - ./tests/tests_directory:/tests_directory
       # include initialisation script (test launcher in QGIS)
       - ./tests/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
+      # include entrypoint script (test launcher in QGIS)
+      - ./tests/tests_runner.sh:/tests_runner.sh
       # mount the x11 socket to forward display to host
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
       AUTOCURVE_HEADLESS_TESTS: "true"
       DISPLAY: :0
+    entrypoint: bash /tests_runner.sh
     command: qgis
