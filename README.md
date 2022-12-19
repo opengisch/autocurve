@@ -16,8 +16,25 @@ The most probable cause is that the tolerance to detect curves is too low. This 
 
 ## Contribute
 
-Pull requests welcome. Before commiting, please install pre-commit to take care of code style.
+Pull requests welcome.
+
+### Code style
+
+Before commiting, please install pre-commit to take care of code style.
 ```
 pip install pre-commit
 pre-commit install
 ```
+
+### Tests
+
+Run the integrations tests with docker
+```bash
+# Run tests (headless)
+docker-compose run tests
+
+# Run tests (with visual feedback)
+docker-compose run tests-gui
+```
+
+Alternatively, you can also run the `tests_integration.py` script from the Python console in QGIS desktop.

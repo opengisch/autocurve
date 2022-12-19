@@ -69,6 +69,7 @@ class Plugin:
         self.toolbar.addAction(self.harmonize_arcs_action)
 
         self.watched_layers = set()
+        self.changed_fids = set()
         self._prevent_recursion = False
 
         self.watch_layer(self.iface.activeLayer())

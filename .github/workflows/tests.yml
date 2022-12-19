@@ -1,0 +1,26 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  tests:
+    runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        qgis_image:
+          - opengisch/qgis:3.28-jammy
+          - opengisch/qgis:3.22-jammy
+
+    env:
+      QGIS_IMAGE: ${{ matrix.qgis_image }}
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Run tests (${{ matrix.qgis_image }})
+        run: docker-compose run tests
