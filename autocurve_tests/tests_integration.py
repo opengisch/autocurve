@@ -1,7 +1,6 @@
 import math
 import os
 from datetime import datetime
-from pathlib import Path
 
 from qgis.core import (
     QgsApplication,
@@ -48,6 +47,7 @@ class IntegrationTest(unittest.TestCase):
             QgsApplication.processEvents()
 
     def _move_vertex(self, vl, feat_id, vtx_id, x, y):
+        """Helper to mimic a move vertex interaction"""
         vl.startEditing()
         vl.beginEditCommand("moving vertex")
         vl.moveVertex(x, y, feat_id, vtx_id)
@@ -55,8 +55,20 @@ class IntegrationTest(unittest.TestCase):
         vl.commitChanges()
 
     def _vtx_at_angle(self, angle: int) -> str:
-        """Returns a vertex at given angle in WKT notation"""
+        """Helper that returns a vertex at given angle on the unit circle in WKT notation"""
         return f"{math.cos(math.radians(angle))} {math.sin(math.radians(angle))}"
+
+    def _make_layer(self, wkt_geoms, geom_type="curvepolygon") -> QgsVectorLayer:
+        """Helper that adds a styled vector layer with the given geometries to the project and returns it"""
+        vl = QgsVectorLayer(f"{geom_type}?crs=epsg:2056", "temp", "memory")
+        for wkt_geom in wkt_geoms:
+            feat = QgsFeature()
+            feat.setGeometry(QgsGeometry.fromWkt(wkt_geom).forceRHR())
+            vl.dataProvider().addFeature(feat)
+
+        # vl.loadNamedStyle(str(Path(__file__).parent / f"{geom_type}.qml"))
+        QgsProject.instance().addMapLayer(vl)
+        return vl
 
     def test_center_points(self):
         # Disable the actions
@@ -64,18 +76,12 @@ class IntegrationTest(unittest.TestCase):
         plugins["autocurve"].harmonize_arcs_action.setChecked(False)
 
         # Create two shapes that have a common arc with a different center point
-        WKT_A = f"CURVEPOLYGON( COMPOUNDCURVE( (0 0, 0 1), CIRCULARSTRING(0 1, {self._vtx_at_angle(30)}, 1 0), (1 0, 0 0) ) )"
-        WKT_B = f"CURVEPOLYGON( COMPOUNDCURVE( (1 1, 0 1), CIRCULARSTRING(0 1, {self._vtx_at_angle(60)}, 1 0), (1 0, 1 1) ) )"
-
-        # Add them to a layer
-        vl = QgsVectorLayer(f"curvepolygon?crs=epsg:2056", "temp", "memory")
-        for WKT in [WKT_A, WKT_B]:
-            feat = QgsFeature()
-            feat.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
-            vl.dataProvider().addFeature(feat)
-
-        vl.loadNamedStyle(str(Path(__file__).parent / "curvepolygon.qml"))
-        QgsProject.instance().addMapLayer(vl)
+        vl = self._make_layer(
+            [
+                f"CURVEPOLYGON( COMPOUNDCURVE( (0 0, 0 1), CIRCULARSTRING(0 1, {self._vtx_at_angle(30)}, 1 0), (1 0, 0 0) ) )",
+                f"CURVEPOLYGON( COMPOUNDCURVE( (1 1, 0 1), CIRCULARSTRING(0 1, {self._vtx_at_angle(60)}, 1 0), (1 0, 1 1) ) )",
+            ],
+        )
 
         self.feedback()
 
@@ -111,23 +117,16 @@ class IntegrationTest(unittest.TestCase):
             vl.getFeature(2).geometry().vertexAt(2),
         )
 
-    def test_autocurve(self):
+    def test_autocurve_basic(self):
         # Disable the actions
         plugins["autocurve"].auto_curve_action.setChecked(False)
         plugins["autocurve"].harmonize_arcs_action.setChecked(False)
 
         # Create a segmented shape
         SEGMENTED_ARC = ",".join(self._vtx_at_angle(a) for a in range(0, 90, 1))
-        WKT = f"POLYGON(( 0 0, {SEGMENTED_ARC}, 0 0 ))"
-
-        # Add them to a layer
-        vl = QgsVectorLayer(f"curvepolygon?crs=epsg:2056", "temp", "memory")
-        feat = QgsFeature()
-        feat.setGeometry(QgsGeometry.fromWkt(WKT).forceRHR())
-        vl.dataProvider().addFeature(feat)
-
-        vl.loadNamedStyle(str(Path(__file__).parent / "curvepolygon.qml"))
-        QgsProject.instance().addMapLayer(vl)
+        vl = self._make_layer(
+            [f"POLYGON(( 0 0, {SEGMENTED_ARC}, 0 0 ))"],
+        )
 
         self.feedback()
 
@@ -153,3 +152,9 @@ class IntegrationTest(unittest.TestCase):
 
         # The arc should now be curvified
         self.assertEqual(vl.getFeature(1).geometry().constGet().nCoordinates(), 5)
+
+
+if __name__ == "__console__":
+    # Run from within QGIS console
+    VISUAL_FEEDBACK = True
+    unittest.main(IntegrationTest(), exit=False)
