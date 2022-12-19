@@ -7,10 +7,19 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-20.04
-    steps:
 
+    strategy:
+      matrix:
+        qgis_image:
+          - opengisch/qgis:3.28-jammy
+          - opengisch/qgis:3.22-jammy
+
+    env:
+      QGIS_IMAGE: ${{ matrix.qgis_image }}
+
+    steps:
       - name: Check out repository code
         uses: actions/checkout@v3
 
-      - name: Run tests
+      - name: Run tests (${{ matrix.qgis_image }})
         run: docker-compose run tests

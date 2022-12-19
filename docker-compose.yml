@@ -4,7 +4,7 @@ services:
 
   # Runs tests (headless)
   tests:
-    image: opengisch/qgis:3.28-jammy
+    image: ${QGIS_IMAGE:-opengisch/qgis:3.28-jammy}
     volumes:
       # mount the plugin
       - ./autocurve:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/autocurve
