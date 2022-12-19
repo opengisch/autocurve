@@ -16,8 +16,6 @@ services:
       - ./testing/runner.py:/runner.py
       # mount the test module
       - ./autocurve_tests:/root/.local/share/QGIS/QGIS3/profiles/default/python/autocurve_tests
-    environment:
-      AUTOCURVE_HEADLESS_TESTS: "true"
     init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
     entrypoint: xvfb-run
     command: python3 /runner.py
@@ -29,7 +27,7 @@ services:
       # mount the x11 socket to forward display to host
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
-      AUTOCURVE_HEADLESS_TESTS: "false"
+      AUTOCURVE_VISUAL_FEEDBACK: "true"
       DISPLAY: :0
     init: false
     entrypoint: ""

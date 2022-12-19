@@ -13,7 +13,7 @@ from qgis.core import (
 from qgis.testing import unittest
 from qgis.utils import iface, plugins
 
-headless = os.environ.get("AUTOCURVE_HEADLESS_TESTS") == "true"
+VISUAL_FEEDBACK = os.environ.get("AUTOCURVE_VISUAL_FEEDBACK") == "true"
 
 
 class IntegrationTest(unittest.TestCase):
@@ -29,7 +29,7 @@ class IntegrationTest(unittest.TestCase):
 
     def feedback(self, message=None, seconds=1):
         """Waits a little so we can see what happens when running the tests with GUI"""
-        if headless:
+        if not VISUAL_FEEDBACK:
             return
 
         self.__feedback_step += 1

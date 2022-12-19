@@ -12,8 +12,9 @@ from qgis.utils import iface
 
 import autocurve_tests.tests_integration
 
-# Foward python output to console
+# Foward pyqgis output to console
 sys.stdout.write = lambda text: qDebug(text.strip())
+sys.stderr.write = lambda text: qDebug(text.strip())
 
 print("Waiting for initialisation...")
 
