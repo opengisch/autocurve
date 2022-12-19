@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     strategy:
+      fail-fast: false
       matrix:
         qgis_image:
           - opengisch/qgis:3.28-jammy

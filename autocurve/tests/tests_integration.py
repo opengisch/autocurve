@@ -33,8 +33,6 @@ class IntegrationTest(unittest.TestCase):
 
     def feedback(self, message=None, seconds=1):
         """Waits a little so we can see what happens when running the tests with GUI"""
-        if not VISUAL_FEEDBACK:
-            return
 
         self.__feedback_step += 1
         if not message:
@@ -47,9 +45,11 @@ class IntegrationTest(unittest.TestCase):
             duration=0,
         )
 
-        t = datetime.now()
-        while (datetime.now() - t).total_seconds() < seconds:
-            QgsApplication.processEvents()
+        if VISUAL_FEEDBACK:
+            t = datetime.now()
+            while (datetime.now() - t).total_seconds() < seconds:
+                QgsApplication.processEvents()
+        QgsApplication.processEvents()
 
     def _move_vertex(self, vl, feat_id, vtx_id, x, y):
         """Helper to mimic a move vertex interaction"""
