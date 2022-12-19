@@ -6,9 +6,13 @@ from qgis.core import (
     QgsApplication,
     QgsFeature,
     QgsGeometry,
+    QgsPointXY,
     QgsProject,
+    QgsSnappingConfig,
     QgsVectorLayer,
 )
+from qgis.gui import QgsMapCanvasTracer, QgsMapMouseEvent
+from qgis.PyQt.QtCore import QEvent, QPoint, Qt
 from qgis.testing import unittest
 from qgis.utils import iface, plugins
 
@@ -152,6 +156,67 @@ class IntegrationTest(unittest.TestCase):
 
         # The arc should now be curvified
         self.assertEqual(vl.getFeature(1).geometry().constGet().nCoordinates(), 5)
+
+    def test_autocurve_and_center_when_tracing(self):
+        # Enable the actions
+        plugins["autocurve"].auto_curve_action.setChecked(True)
+        plugins["autocurve"].harmonize_arcs_action.setChecked(True)
+
+        # Enable snapping
+        snap_config = QgsSnappingConfig(QgsProject.instance())
+        snap_config.setEnabled(True)
+        QgsProject.instance().setSnappingConfig(snap_config)
+
+        # Enable tracing
+        tracer = QgsMapCanvasTracer.tracerForCanvas(iface.mapCanvas())
+        tracer.actionEnableTracing().trigger()
+
+        # Create an arc shape shape
+        vl = self._make_layer(
+            [
+                f"CURVEPOLYGON( COMPOUNDCURVE( (0 0, 0 1), CIRCULARSTRING(0 1, {self._vtx_at_angle(30)}, 1 0), (1 0, 0 0) ) )",
+            ],
+        )
+
+        self.feedback()
+
+        # Select the layer
+        iface.setActiveLayer(vl)
+
+        # Start editing
+        vl.startEditing()
+
+        self.feedback()
+        iface.actionAddFeature().trigger()
+        tool = iface.mapCanvas().mapTool()
+
+        self.feedback()
+        tool.addVertex(QgsPointXY(1, 1))
+        self.feedback()
+        tool.addVertex(QgsPointXY(1, 0))
+        self.feedback()
+        tool.addVertex(QgsPointXY(0, 1))
+        self.feedback()
+        tool.cadCanvasReleaseEvent(
+            QgsMapMouseEvent(
+                iface.mapCanvas(),
+                QEvent.Type.MouseButtonRelease,
+                QPoint(),
+                Qt.RightButton,
+            )
+        )
+
+        self.feedback()
+        vl.commitChanges()
+
+        # The center points should now be the same
+        self.assertEqual(
+            vl.getFeature(1).geometry().vertexAt(2),
+            vl.getFeature(2).geometry().vertexAt(2),
+        )
+
+        # The second feature should be curvified
+        self.assertEqual(vl.getFeature(2).geometry().constGet().nCoordinates(), 5)
 
 
 if __name__ == "__console__":

@@ -36,3 +36,5 @@ docker-compose run tests
 # Run tests (with visual feedback)
 docker-compose run tests-gui
 ```
+
+Alternatively, you can also run the `tests_integration.py` script from the Python console in QGIS desktop.
