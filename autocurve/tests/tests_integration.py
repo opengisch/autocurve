@@ -1,6 +1,7 @@
 import math
 import os
 from datetime import datetime
+from pathlib import Path
 
 from qgis.core import (
     QgsApplication,
@@ -70,7 +71,9 @@ class IntegrationTest(unittest.TestCase):
             feat.setGeometry(QgsGeometry.fromWkt(wkt_geom).forceRHR())
             vl.dataProvider().addFeature(feat)
 
-        # vl.loadNamedStyle(str(Path(__file__).parent / f"{geom_type}.qml"))
+        plugin_path = Path(QgsApplication.qgisSettingsDirPath())
+        styles_path = plugin_path / "python" / "plugins" / "autocurve" / "tests"
+        vl.loadNamedStyle(str(str(styles_path / f"{geom_type}.qml")))
         QgsProject.instance().addMapLayer(vl)
         return vl
 

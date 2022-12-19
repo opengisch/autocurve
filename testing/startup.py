@@ -10,7 +10,8 @@ import unittest
 from qgis.PyQt.QtCore import qDebug
 from qgis.utils import iface
 
-import autocurve_tests.tests_integration
+# TODO: proper tests discovery
+from autocurve.tests import tests_integration
 
 # Foward pyqgis output to console
 sys.stdout.write = lambda text: qDebug(text.strip())
@@ -24,7 +25,7 @@ def run_tests():
     print("Starting tests...")
 
     # Run the tests
-    test = unittest.main(module=autocurve_tests.tests_integration, exit=False)
+    test = unittest.main(module=tests_integration, exit=False)
 
     # To workaround missing exit code (see below), so we print the result value and check for it in the runner
     if test.result.wasSuccessful():
