@@ -14,6 +14,8 @@ services:
       - ./testing/startup.py:/root/.local/share/QGIS/QGIS3/startup.py
       # include entrypoint script (test launcher in QGIS)
       - ./testing/runner.py:/runner.py
+      # include entrypoint script (test launcher in QGIS)
+      - ./testing/artifacts:/tmp/autocurve_tests_artifacts
     init: true # not sure why, but this is necessary for xvfb (see https://stackoverflow.com/a/72017110)
     entrypoint: xvfb-run
     command: python3 /runner.py

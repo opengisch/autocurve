@@ -1,5 +1,6 @@
 import math
 import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from qgis.core import (
 )
 from qgis.gui import QgsMapCanvasTracer, QgsMapMouseEvent
 from qgis.PyQt.QtCore import QEvent, QPoint, Qt
+from qgis.PyQt.QtGui import QPixmap
 from qgis.testing import unittest
 from qgis.utils import iface, plugins
 
@@ -50,6 +52,18 @@ class IntegrationTest(unittest.TestCase):
             while (datetime.now() - t).total_seconds() < seconds:
                 QgsApplication.processEvents()
         QgsApplication.processEvents()
+
+        artifacts_dir = (
+            Path(tempfile.gettempdir())
+            / "autocurve_tests_artifacts"
+            / f"{self.__class__.__name__}-{self._testMethodName}-{self.__feedback_step}.jpg"
+        )
+        os.makedirs(artifacts_dir.parent, exist_ok=True)
+        rect = iface.mainWindow().size()
+        pixmap = QPixmap(rect)
+        iface.mainWindow().render(pixmap)
+        pixmap.save(str(artifacts_dir))
+        print(f"saving pixmap to {artifacts_dir}")
 
     def _move_vertex(self, vl, feat_id, vtx_id, x, y):
         """Helper to mimic a move vertex interaction"""
