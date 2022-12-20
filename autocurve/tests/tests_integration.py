@@ -1,7 +1,9 @@
 import math
 import os
+import timeit
 from datetime import datetime
 from pathlib import Path
+from random import uniform
 
 from qgis.core import (
     QgsApplication,
@@ -51,24 +53,33 @@ class IntegrationTest(unittest.TestCase):
                 QgsApplication.processEvents()
         QgsApplication.processEvents()
 
-    def _move_vertex(self, vl, feat_id, vtx_id, x, y):
+    def _move_vertex(self, vl, feat_id, vtx_id, x, y, toggle_editing=True):
         """Helper to mimic a move vertex interaction"""
-        vl.startEditing()
+        if toggle_editing:
+            vl.startEditing()
         vl.beginEditCommand("moving vertex")
         vl.moveVertex(x, y, feat_id, vtx_id)
         vl.endEditCommand()
-        vl.commitChanges()
+        if toggle_editing:
+            vl.commitChanges()
 
-    def _vtx_at_angle(self, angle: int) -> str:
+    def _segmented_arc(self, from_angle, to_angle, step):
+        """Helper that returns a segmented arc (list of vertex) at given angle on the unit circle in WKT notation"""
+        return ",".join(
+            self._vtx_at_angle(a) for a in range(from_angle, to_angle + step, step)
+        )
+
+    def _vtx_at_angle(self, angle: int, radius=1) -> str:
         """Helper that returns a vertex at given angle on the unit circle in WKT notation"""
-        return f"{math.cos(math.radians(angle))} {math.sin(math.radians(angle))}"
+        angle = angle % 360
+        return f"{radius*math.cos(math.radians(angle))} {radius*math.sin(math.radians(angle))}"
 
     def _make_layer(self, wkt_geoms, geom_type="curvepolygon") -> QgsVectorLayer:
         """Helper that adds a styled vector layer with the given geometries to the project and returns it"""
         vl = QgsVectorLayer(f"{geom_type}?crs=epsg:2056", "temp", "memory")
         for wkt_geom in wkt_geoms:
             feat = QgsFeature()
-            feat.setGeometry(QgsGeometry.fromWkt(wkt_geom).forceRHR())
+            feat.setGeometry(QgsGeometry.fromWkt(wkt_geom))
             vl.dataProvider().addFeature(feat)
 
         plugin_path = Path(QgsApplication.qgisSettingsDirPath())
@@ -77,6 +88,7 @@ class IntegrationTest(unittest.TestCase):
         QgsProject.instance().addMapLayer(vl)
         return vl
 
+    @unittest.skip("temp")
     def test_center_points(self):
         # Disable the actions
         plugins["autocurve"].auto_curve_action.setChecked(False)
@@ -124,15 +136,15 @@ class IntegrationTest(unittest.TestCase):
             vl.getFeature(2).geometry().vertexAt(2),
         )
 
+    @unittest.skip("temp")
     def test_autocurve_basic(self):
         # Disable the actions
         plugins["autocurve"].auto_curve_action.setChecked(False)
         plugins["autocurve"].harmonize_arcs_action.setChecked(False)
 
         # Create a segmented shape
-        SEGMENTED_ARC = ",".join(self._vtx_at_angle(a) for a in range(0, 90, 1))
         vl = self._make_layer(
-            [f"POLYGON(( 0 0, {SEGMENTED_ARC}, 0 0 ))"],
+            [f"POLYGON(( 0 0, {self._segmented_arc(0, 90, 1)}, 0 0 ))"],
         )
 
         self.feedback()
@@ -160,6 +172,7 @@ class IntegrationTest(unittest.TestCase):
         # The arc should now be curvified
         self.assertEqual(vl.getFeature(1).geometry().constGet().nCoordinates(), 5)
 
+    @unittest.skip("temp")
     def test_autocurve_and_center_when_tracing(self):
         # Enable the actions
         plugins["autocurve"].auto_curve_action.setChecked(True)
@@ -220,6 +233,60 @@ class IntegrationTest(unittest.TestCase):
 
         # The second feature should be curvified
         self.assertEqual(vl.getFeature(2).geometry().constGet().nCoordinates(), 5)
+
+    def test_harmonize_arcs_performance(self):
+
+        # Create a test half sun :-)
+        neighbours = []
+        polygon_part = []
+        step = 1
+        for a in range(0, 180, step):
+            polygon_part.append(
+                f"CIRCULARSTRING({self._vtx_at_angle(a)}, {self._vtx_at_angle(a+2/3*step)}, {self._vtx_at_angle(a+step)})"
+            )
+            neighbours.append(
+                f"CURVEPOLYGON(COMPOUNDCURVE(({self._vtx_at_angle(a, 2)}, {self._vtx_at_angle(a)}), CIRCULARSTRING({self._vtx_at_angle(a)}, {self._vtx_at_angle(a+1/3*step)}, {self._vtx_at_angle(a+step)}), ({self._vtx_at_angle(a+step)}, {self._vtx_at_angle(a+step, 2)}, {self._vtx_at_angle(a, 2)}))"
+            )
+
+        vl = self._make_layer(
+            [
+                f"CURVEPOLYGON(COMPOUNDCURVE((0 0, 1 0), {','.join(polygon_part)}, (-1 0, 0 0)))",
+                *neighbours,
+            ],
+        )
+
+        # Edit a feature with harmonize_arcs enabled
+        plugins["autocurve"].harmonize_arcs_action.setChecked(True)
+
+        def do():
+            self._move_vertex(
+                vl,
+                feat_id=1,
+                vtx_id=0,
+                x=uniform(-0.1, 0.1),
+                y=uniform(-0.1, 0.1),
+                toggle_editing=False,
+            )
+
+        iterations = 1
+
+        vl.startEditing()
+        performance = timeit.timeit(do, number=iterations)
+        vl.commitChanges()
+
+        # The center points should now be the same
+        self.assertEqual(
+            vl.getFeature(1).geometry().vertexAt(2),
+            vl.getFeature(2).geometry().vertexAt(2),
+        )
+
+        # Performance should be acceptable
+        print(f"Ran {iterations} times in {performance:.4f}s")
+        self.assertLess(
+            performance,
+            15.0 * iterations,  # TODO: 15 seconds per iteration is WAAY to slow,
+            "Performance is too slow !",
+        )
 
 
 if __name__ == "__console__":
