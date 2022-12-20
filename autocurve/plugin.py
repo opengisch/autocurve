@@ -21,6 +21,7 @@
  ***************************************************************************/
 """
 import os.path
+from typing import List
 
 import sip
 from processing.gui import AlgorithmExecutor
@@ -28,15 +29,14 @@ from qgis.core import (
     QgsApplication,
     QgsFeatureRequest,
     QgsGeometry,
-    QgsGeometryUtils,
     QgsMapLayerType,
-    QgsPoint,
     QgsVertexId,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 from . import settings
+from .utils import SnappingVertexPoint
 
 
 class Plugin:
@@ -167,10 +167,10 @@ class Plugin:
         for feature in layer.selectedFeatures():
 
             # Find all arcs points
-            arcs_vertices = self._get_curve_points(feature.geometry())
+            snap_points = self._get_snap_points(feature)
 
             # Skip if not curved
-            if not arcs_vertices:
+            if not snap_points:
                 continue
 
             # Find all neighbours to test against
@@ -182,7 +182,7 @@ class Plugin:
             new_geom = None
 
             # Iterate on all arc vertics, combinined will all neighbouring arc vertices
-            for arc_vertex in arcs_vertices:
+            for snap_point in snap_points:
 
                 for neighbour in neighbours:
 
@@ -190,21 +190,17 @@ class Plugin:
                         # don't compare about itself
                         continue
 
-                    for nearby_arc_vertex in self._get_curve_points(
-                        neighbour.geometry()
-                    ):
+                    for nearby_snap_point in self._get_snap_points(neighbour):
                         # Perform the actual snapping test
-                        if self._can_snap(
-                            feature, arc_vertex, neighbour, nearby_arc_vertex
-                        ):
-                            # Perform the actual snapping
-                            toPos = neighbour.geometry().vertexAt(nearby_arc_vertex)
+                        if snap_point.snaps_to(nearby_snap_point):
 
                             # Clone the geometry if not already cloned
                             if new_geom is None:
                                 new_geom = QgsGeometry(feature.geometry())
 
-                            success = new_geom.moveVertex(toPos, arc_vertex)
+                            success = new_geom.moveVertex(
+                                nearby_snap_point.vertex, snap_point.vertex_nr
+                            )
                             assert success
 
             # Apply the changed geometry
@@ -213,50 +209,16 @@ class Plugin:
 
         layer.endEditCommand()
 
-    def _can_snap(self, feature_1, arc_vertex_1, feature_2, arc_vertex_2):
-        """Returns whether both given arc vertices can snap."""
-
-        # Get the 3 points that form both arcs
-        v_1b = arc_vertex_1
-        v_2b = arc_vertex_2
-        v_1a, v_1c = feature_1.geometry().adjacentVertices(v_1b)
-        v_2a, v_2c = feature_2.geometry().adjacentVertices(v_2b)
-
-        p1a = feature_1.geometry().vertexAt(v_1a)
-        p1b = feature_1.geometry().vertexAt(v_1b)
-        p1c = feature_1.geometry().vertexAt(v_1c)
-
-        p2a = feature_2.geometry().vertexAt(v_2a)
-        p2b = feature_2.geometry().vertexAt(v_2b)
-        p2c = feature_2.geometry().vertexAt(v_2c)
-
-        # Test if start and end points are equal
-        if not (self._almost_equal(p1a, p2a) and self._almost_equal(p1c, p2c)) and not (
-            self._almost_equal(p1a, p2c) and self._almost_equal(p1c, p2a)
-        ):
-            return False
-
-        # Test if circles are equivalent (same center point within tolerance)
-        _, c1x, c1y = QgsGeometryUtils.circleCenterRadius(p1a, p1b, p1c)
-        _, c2x, c2y = QgsGeometryUtils.circleCenterRadius(p2a, p2b, p2c)
-        if not self._almost_equal(QgsPoint(c1x, c1y), QgsPoint(c2x, c2y)):
-            return False
-
-        return True
-
-    def _almost_equal(self, p1, p2):
-        """Test point equality with tolerance"""
-        return p1.distance(p2) <= settings.distance()
-
-    def _get_curve_points(self, geometry):
-        """Returns a list of vertex numbers that are curve points"""
-        curved_vertices = []
+    def _get_snap_points(self, feature):
+        """Returns a list of snap points for the given feature"""
+        curved_vertices: List[SnappingVertexPoint] = []
         vertex_id = QgsVertexId()
         while True:
-            found, point = geometry.constGet().nextVertex(vertex_id)
+            found, point = feature.geometry().constGet().nextVertex(vertex_id)
             if not found:
                 break
             if vertex_id.type is QgsVertexId.VertexType.Curve:
-                curved_vertices.append(geometry.vertexNrFromVertexId(vertex_id))
+                vertex_nr = feature.geometry().vertexNrFromVertexId(vertex_id)
+                curved_vertices.append(SnappingVertexPoint(feature, vertex_nr, point))
 
         return curved_vertices

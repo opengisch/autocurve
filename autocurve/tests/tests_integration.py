@@ -88,7 +88,6 @@ class IntegrationTest(unittest.TestCase):
         QgsProject.instance().addMapLayer(vl)
         return vl
 
-    @unittest.skip("temp")
     def test_center_points(self):
         # Disable the actions
         plugins["autocurve"].auto_curve_action.setChecked(False)
@@ -136,7 +135,6 @@ class IntegrationTest(unittest.TestCase):
             vl.getFeature(2).geometry().vertexAt(2),
         )
 
-    @unittest.skip("temp")
     def test_autocurve_basic(self):
         # Disable the actions
         plugins["autocurve"].auto_curve_action.setChecked(False)
@@ -172,7 +170,6 @@ class IntegrationTest(unittest.TestCase):
         # The arc should now be curvified
         self.assertEqual(vl.getFeature(1).geometry().constGet().nCoordinates(), 5)
 
-    @unittest.skip("temp")
     def test_autocurve_and_center_when_tracing(self):
         # Enable the actions
         plugins["autocurve"].auto_curve_action.setChecked(True)
@@ -236,10 +233,12 @@ class IntegrationTest(unittest.TestCase):
 
     def test_harmonize_arcs_performance(self):
 
+        step = 1
+        iterations = 5
+
         # Create a test half sun :-)
         neighbours = []
         polygon_part = []
-        step = 1
         for a in range(0, 180, step):
             polygon_part.append(
                 f"CIRCULARSTRING({self._vtx_at_angle(a)}, {self._vtx_at_angle(a+2/3*step)}, {self._vtx_at_angle(a+step)})"
@@ -268,8 +267,6 @@ class IntegrationTest(unittest.TestCase):
                 toggle_editing=False,
             )
 
-        iterations = 1
-
         vl.startEditing()
         performance = timeit.timeit(do, number=iterations)
         vl.commitChanges()
@@ -284,8 +281,8 @@ class IntegrationTest(unittest.TestCase):
         print(f"Ran {iterations} times in {performance:.4f}s")
         self.assertLess(
             performance,
-            15.0 * iterations,  # TODO: 15 seconds per iteration is WAAY to slow,
-            "Performance is too slow !",
+            2.0 * iterations,
+            "Performance is too bad !",
         )
 
 
