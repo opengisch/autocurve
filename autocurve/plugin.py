@@ -36,7 +36,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 from . import settings
-from .utils import SnappingVertexPoint
+from .utils import MiniIndex, SnapCurvePoint
 
 
 class Plugin:
@@ -178,30 +178,38 @@ class Plugin:
             request.setDistanceWithin(feature.geometry(), settings.distance())
             neighbours = list(layer.getFeatures(request))
 
+            # Keep candidate snapping arcs
+            index = MiniIndex(tolerance=settings.distance())
+            nearby_snap_points = []
+            for neighbour in neighbours:
+
+                if neighbour.id() == feature.id():
+                    # don't compare about itself
+                    continue
+
+                for nearby_snap_point in self._get_snap_points(neighbour):
+                    nearby_snap_points.append(nearby_snap_point)
+                    index.add_snap_point(nearby_snap_point)
+
             # This will hold the new geometry if it needs changes
             new_geom = None
 
             # Iterate on all arc vertics, combinined will all neighbouring arc vertices
             for snap_point in snap_points:
 
-                for neighbour in neighbours:
+                for nearby_snap_point in index.get_neighbours(snap_point):
 
-                    if neighbour.id() == feature.id():
-                        # don't compare about itself
-                        continue
+                    # Perform the actual snapping test
+                    if snap_point.snaps_to(nearby_snap_point):
 
-                    for nearby_snap_point in self._get_snap_points(neighbour):
-                        # Perform the actual snapping test
-                        if snap_point.snaps_to(nearby_snap_point):
+                        # Clone the geometry if not already cloned
+                        if new_geom is None:
+                            new_geom = QgsGeometry(feature.geometry())
 
-                            # Clone the geometry if not already cloned
-                            if new_geom is None:
-                                new_geom = QgsGeometry(feature.geometry())
-
-                            success = new_geom.moveVertex(
-                                nearby_snap_point.vertex, snap_point.vertex_nr
-                            )
-                            assert success
+                        success = new_geom.moveVertex(
+                            nearby_snap_point.vertex, snap_point.vertex_nr
+                        )
+                        assert success
 
             # Apply the changed geometry
             if new_geom is not None:
@@ -211,7 +219,8 @@ class Plugin:
 
     def _get_snap_points(self, feature):
         """Returns a list of snap points for the given feature"""
-        curved_vertices: List[SnappingVertexPoint] = []
+
+        curved_vertices: List[SnapCurvePoint] = []
         vertex_id = QgsVertexId()
         while True:
             found, point = feature.geometry().constGet().nextVertex(vertex_id)
@@ -219,6 +228,6 @@ class Plugin:
                 break
             if vertex_id.type is QgsVertexId.VertexType.Curve:
                 vertex_nr = feature.geometry().vertexNrFromVertexId(vertex_id)
-                curved_vertices.append(SnappingVertexPoint(feature, vertex_nr, point))
+                curved_vertices.append(SnapCurvePoint(feature, vertex_nr, point))
 
         return curved_vertices
