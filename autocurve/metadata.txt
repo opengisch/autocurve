@@ -1,7 +1,7 @@
 [general]
 name=Autocurve
 qgisMinimumVersion=3.14
-description=Automatically converts geometries to curves after edit commands
+description=Automatic cleanup of arcs after editing geometries (convert to curve and harmonize arc centers)
 version=dev
 author=Opengis
 email=olivier@opengis.ch

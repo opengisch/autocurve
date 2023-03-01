@@ -1,6 +1,6 @@
 # Autocurve for QGIS
 
-Adds a toggle that automatically runs the new ConvertToCurves algorithm after edit commands such as split or merge.
+QGIS plugin that adds a toggle that post-processes geometries after edit commands. Currently supports converting to curves and snapping curve midpoints.
 
 ![screenast](readme.gif)
 
