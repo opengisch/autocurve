@@ -162,6 +162,9 @@ class Plugin:
 
         layer = self.iface.activeLayer()
 
+        if not layer or not layer.isSpatial():
+            return
+
         layer.beginEditCommand("Harmonize arcs")
 
         for feature in layer.selectedFeatures():
